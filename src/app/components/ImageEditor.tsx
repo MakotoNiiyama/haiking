@@ -3,8 +3,8 @@
 import { useState, useCallback } from 'react'
 import { FILTERS, renderToCanvas } from '@/lib/filters'
 import type { HaikuResult } from '@/types'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { Button } from '@/app/components/ui/button'
+import { Badge } from '@/app/components/ui/badge'
 import { Download, RefreshCw, RotateCcw } from 'lucide-react'
 import { toast } from 'sonner'
 

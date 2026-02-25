@@ -7,7 +7,7 @@ import ReactCrop, {
   makeAspectCrop,
 } from 'react-image-crop'
 import 'react-image-crop/dist/ReactCrop.css'
-import { Button } from '@/components/ui/button'
+import { Button } from '@/app/components/ui/button'
 import { Crop as CropIcon } from 'lucide-react'
 
 interface Props {

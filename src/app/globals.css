@@ -7,8 +7,8 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-noto-sans-jp), "Hiragino Kaku Gothic ProN", sans-serif;
-  --font-serif: var(--font-noto-serif-jp), "Hiragino Mincho ProN", serif;
+  --font-sans: var(--font-zen-maru), "Hiragino Kaku Gothic ProN", sans-serif;
+  --font-serif: var(--font-klee-one), "Hiragino Mincho ProN", cursive;
   --font-mono: ui-monospace, monospace;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -50,37 +50,37 @@
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --background: #fafafa;
+  --foreground: #111111;
+  --card: #ffffff;
+  --card-foreground: #111111;
+  --popover: #ffffff;
+  --popover-foreground: #111111;
+  --primary: #111111;
+  --primary-foreground: #ffffff;
+  --secondary: #f3f3f5;
+  --secondary-foreground: #111111;
+  --muted: #ececf0;
+  --muted-foreground: #717182;
+  --accent: #e9ebef;
+  --accent-foreground: #111111;
+  --destructive: #d4183d;
+  --border: rgba(0, 0, 0, 0.08);
+  --input: #f3f3f5;
+  --ring: rgba(0, 0, 0, 0.15);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar: #f3f3f5;
+  --sidebar-foreground: #111111;
+  --sidebar-primary: #111111;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e9ebef;
+  --sidebar-accent-foreground: #111111;
+  --sidebar-border: rgba(0, 0, 0, 0.08);
+  --sidebar-ring: rgba(0, 0, 0, 0.15);
 }
 
 .dark {
@@ -123,9 +123,9 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-noto-sans-jp), "Hiragino Kaku Gothic ProN", sans-serif;
+    font-family: var(--font-zen-maru), "Hiragino Kaku Gothic ProN", sans-serif;
+    background-color: #fafafa;
   }
-  /* スクロールバーを非表示（横スクロール用） */
   .scrollbar-none {
     -ms-overflow-style: none;
     scrollbar-width: none;
@@ -135,56 +135,74 @@
   }
 }
 
-/* 俳句フォント */
+/* ── Figma font utilities ── */
+.font-klee {
+  font-family: var(--font-klee-one), "Hiragino Mincho ProN", cursive;
+}
+
+.font-zen {
+  font-family: var(--font-zen-maru), "Hiragino Kaku Gothic ProN", sans-serif;
+}
+
+/* Legacy haiku font class */
 .font-haiku {
-  font-family: var(--font-noto-serif-jp), "Hiragino Mincho ProN", "Yu Mincho", serif;
-  font-feature-settings: "palt";
+  font-family: var(--font-klee-one), "Hiragino Mincho ProN", cursive;
   letter-spacing: 0.15em;
 }
 
-/* 画像フィルターアニメーション */
-.filter-transition {
-  transition: filter 0.3s ease;
+/* ── Range input custom style (text color slider) ── */
+input[type="range"].color-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 24px;
+  background: transparent;
+  cursor: pointer;
+}
+input[type="range"].color-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: white;
+  border: 2px solid rgba(0, 0, 0, 0.15);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  margin-top: -7px;
+}
+input[type="range"].color-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(to right, #000000, #ffffff);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+input[type="range"].color-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: white;
+  border: 2px solid rgba(0, 0, 0, 0.15);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+input[type="range"].color-slider::-moz-range-track {
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(to right, #000000, #ffffff);
 }
 
-/* 浮かび上がるアニメーション */
+/* ── Animations ── */
 @keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
-
 .animate-fade-in-up {
   animation: fadeInUp 0.5s ease forwards;
 }
 
-/* 俳句テキストの書体アニメーション */
 @keyframes inkFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-    filter: blur(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-    filter: blur(0);
-  }
+  from { opacity: 0; transform: translateY(8px); filter: blur(4px); }
+  to   { opacity: 1; transform: translateY(0); filter: blur(0); }
 }
+.animate-ink-in          { animation: inkFadeIn 0.8s ease forwards; }
+.animate-ink-in-delay-1  { animation: inkFadeIn 0.8s 0.15s ease both; }
+.animate-ink-in-delay-2  { animation: inkFadeIn 0.8s 0.30s ease both; }
 
-.animate-ink-in {
-  animation: inkFadeIn 0.8s ease forwards;
-}
-
-.animate-ink-in-delay-1 {
-  animation: inkFadeIn 0.8s 0.15s ease both;
-}
-
-.animate-ink-in-delay-2 {
-  animation: inkFadeIn 0.8s 0.3s ease both;
-}
+.filter-transition { transition: filter 0.3s ease; }

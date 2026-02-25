@@ -1,19 +1,26 @@
 import type { Metadata } from 'next'
-import { Noto_Serif_JP, Noto_Sans_JP } from 'next/font/google'
-import { Toaster } from '@/components/ui/sonner'
+import { Noto_Serif_JP, Klee_One, Zen_Maru_Gothic } from 'next/font/google'
+import { Toaster } from '@/app/components/ui/sonner'
 import './globals.css'
+
+const kleeOne = Klee_One({
+  variable: '--font-klee-one',
+  subsets: ['latin'],
+  weight: ['400', '600'],
+  display: 'swap',
+})
+
+const zenMaruGothic = Zen_Maru_Gothic({
+  variable: '--font-zen-maru',
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '700'],
+  display: 'swap',
+})
 
 const notoSerifJP = Noto_Serif_JP({
   variable: '--font-noto-serif-jp',
   subsets: ['latin'],
   weight: ['400', '700'],
-  display: 'swap',
-})
-
-const notoSansJP = Noto_Sans_JP({
-  variable: '--font-noto-sans-jp',
-  subsets: ['latin'],
-  weight: ['400', '500', '700'],
   display: 'swap',
 })
 
@@ -31,12 +38,12 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <body
-        className={`${notoSerifJP.variable} ${notoSansJP.variable} antialiased`}
+        className={`${kleeOne.variable} ${zenMaruGothic.variable} ${notoSerifJP.variable} antialiased`}
       >
         {children}
         <Toaster richColors position="top-center" />
-
       </body>
     </html>
-  );
+  )
 }
+
