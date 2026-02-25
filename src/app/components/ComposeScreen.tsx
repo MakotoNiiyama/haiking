@@ -4,7 +4,7 @@ import { useState, useRef, useCallback } from 'react'
 import { ArrowLeft, Upload, Sparkles, Send, RotateCcw } from 'lucide-react'
 import { motion, AnimatePresence } from 'motion/react'
 import { toast } from 'sonner'
-import { autoCropToSquare, findBestTextPlacement } from '@/lib/imageAnalysis'
+import { autoCropToSquare, findBestTextPlacement, applyFilmTone } from '@/lib/imageAnalysis'
 
 interface ComposeScreenProps {
   onBack: () => void
@@ -23,6 +23,7 @@ export function ComposeScreen({ onBack }: ComposeScreenProps) {
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
+  const croppedForApiRef = useRef<string | null>(null) // フィルムトーン前のクロップ済画像（AI送信用）
   const dragStartRef = useRef<{
     x: number
     y: number
@@ -32,11 +33,16 @@ export function ComposeScreen({ onBack }: ComposeScreenProps) {
 
   const textColor = `rgb(${textGray}, ${textGray}, ${textGray})`
 
-  /** 画像を读み込んで autoCropToSquare → API 呼び出し → findBestTextPlacement を並列実行 */
+  /**
+   * 画像選択時のフロー：
+   *  ① DataURL 変換 → ② 自動クロップ → ③ AIリクエストを即座に開始
+   *  ④ 待機中に filmTone + 配置分析を並列実行 (高速, ~50ms) → 番画すぐ表示
+   *  ⑤ AI 完了時に俳句をテキストとしてアニメーション表示
+   */
   const handleFileSelect = useCallback(async (file: File) => {
     if (!file.type.startsWith('image/')) return
 
-    // ① ファイルを DataURL に変換
+    // ① DataURL 変換
     const rawDataUrl = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader()
       reader.onload = (e) => resolve(e.target?.result as string)
@@ -44,32 +50,44 @@ export function ComposeScreen({ onBack }: ComposeScreenProps) {
       reader.readAsDataURL(file)
     })
 
-    // ② 自動クロップ（短辺基準の正方形，情報量が多い領域を自動選択）
+    // ② 自動クロップ
     setIsGenerating(true)
     setHaiku(null)
+    setUploadedImage(null)
     let croppedUrl = rawDataUrl
     try {
       croppedUrl = await autoCropToSquare(rawDataUrl)
     } catch (e) {
       console.warn('autoCropToSquare failed, using original', e)
     }
-    setUploadedImage(croppedUrl)
+    croppedForApiRef.current = croppedUrl
 
-    // ③ 俳句生成 + テキスト配置分析を並列実行
+    // ③ AIリクエストを即座に開始 (遅い, 3–10秒)
+    const apiPromise = fetch('/api/generate-haiku', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imageBase64: croppedUrl }),
+    })
+
+    // ④ 待機中に filmTone + 配置分析 (高速プレビュー表示)
     try {
-      const [apiRes, placement] = await Promise.all([
-        fetch('/api/generate-haiku', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageBase64: croppedUrl }),
-        }),
+      const [filteredUrl, placement] = await Promise.all([
+        applyFilmTone(croppedUrl).catch(() => croppedUrl),
         findBestTextPlacement(croppedUrl),
       ])
+      setUploadedImage(filteredUrl) // スピナーが乗ったまま画像が即座に出る
+      setTextPos({ x: placement.x, y: placement.y })
+      setTextGray(placement.gray)
+    } catch {
+      setUploadedImage(croppedUrl)
+    }
+
+    // ⑤ AI 完了待ち (スピナーはここまで続く)
+    try {
+      const apiRes = await apiPromise
       if (!apiRes.ok) throw new Error(await apiRes.text())
       const data = await apiRes.json()
       setHaiku(data.lines as string[])
-      setTextPos({ x: placement.x, y: placement.y })
-      setTextGray(placement.gray)
     } catch (err) {
       console.error(err)
       toast.error('俳句の生成に失敗しました。もう一度お試しください。')
@@ -88,16 +106,17 @@ export function ComposeScreen({ onBack }: ComposeScreenProps) {
     [handleFileSelect],
   )
 
-  /** 同じ画像で再度俳句だけ生成（クロップ・配置再計算はしない） */
+  /** 同じ画像で再度俳句だけ再生成（クロップ・フィルムトーン・配置は変更しない） */
   const regenerateHaiku = async () => {
-    if (!uploadedImage) return
+    const src = croppedForApiRef.current
+    if (!src) return
     setIsGenerating(true)
     setHaiku(null)
     try {
       const res = await fetch('/api/generate-haiku', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64: uploadedImage }),
+        body: JSON.stringify({ imageBase64: src }),
       })
       if (!res.ok) throw new Error(await res.text())
       const data = await res.json()
@@ -129,8 +148,8 @@ export function ComposeScreen({ onBack }: ComposeScreenProps) {
     const rect = cardRef.current.getBoundingClientRect()
     const dx = ((e.clientX - dragStartRef.current.x) / rect.width) * 100
     const dy = ((e.clientY - dragStartRef.current.y) / rect.height) * 100
-    const newX = Math.max(5, Math.min(95, dragStartRef.current.posX + dx))
-    const newY = Math.max(5, Math.min(95, dragStartRef.current.posY + dy))
+    const newX = Math.max(20, Math.min(80, dragStartRef.current.posX + dx))
+    const newY = Math.max(30, Math.min(62, dragStartRef.current.posY + dy))
     setTextPos({ x: newX, y: newY })
   }
 
@@ -242,7 +261,7 @@ export function ComposeScreen({ onBack }: ComposeScreenProps) {
                       <div
                         className="flex flex-row-reverse items-start"
                         style={{
-                          fontFamily: "'Klee One', cursive",
+                          fontFamily: "'Yusei Magic', cursive",
                           color: textColor,
                           gap: '0.5em',
                         }}

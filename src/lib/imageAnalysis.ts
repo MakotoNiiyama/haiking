@@ -170,12 +170,59 @@ export async function findBestTextPlacement(dataUrl: string): Promise<TextPlacem
     }
   }
 
-  // Center of best block in percentage, clamped so text stays in-frame
-  const x = Math.max(15, Math.min(85, ((bestCol + 0.5) / COLS) * 100))
-  const y = Math.max(20, Math.min(75, ((bestRow + 0.5) / ROWS) * 100))
+  // Center of best block in percentage.
+  // Vertical text block occupies ~20% width × ~45% height of the card.
+  // Clamp so the block center never lets text escape the frame, accounting for:
+  //   - horizontal: 3 text columns ≈ 20% total width  → half = 10%, + 10% margin
+  //   - vertical:   staggered lines ≈ 48% total height → half = 24%, add margins
+  const x = Math.max(20, Math.min(80, ((bestCol + 0.5) / COLS) * 100))
+  const y = Math.max(30, Math.min(62, ((bestRow + 0.5) / ROWS) * 100))
 
-  // Text color: dark on light background, light on dark background
-  const gray = bestMean > 0.52 ? 20 : 235
+  // Always use white text (gray=235) — film-toned images are darker,
+  // and white reads universally well on the vignette/gradient overlay.
+  const gray = 235
 
   return { x, y, gray }
+}
+
+/**
+ * Apply a film-camera color grade to an image.
+ *
+ * Effect layers:
+ *  1. CSS filter: contrast up, saturation down, slight sepia warm tone, slight darken
+ *  2. Warm shadow overlay: lifts the "film" feel with a faint amber cast
+ *  3. Vignette: radial gradient darkens edges for depth and helps white text pop
+ *
+ * Returns a JPEG DataURL. Processing happens on Canvas in ~20–50 ms.
+ */
+export async function applyFilmTone(dataUrl: string): Promise<string> {
+  const img = await loadImage(dataUrl)
+  const W = img.naturalWidth
+  const H = img.naturalHeight
+
+  const canvas = document.createElement('canvas')
+  canvas.width = W
+  canvas.height = H
+  const ctx = canvas.getContext('2d')!
+
+  // 1. Film-grade: boost contrast, desaturate, add warm sepia, darken slightly
+  ctx.filter = 'contrast(1.14) saturate(0.72) sepia(0.20) brightness(0.87)'
+  ctx.drawImage(img, 0, 0)
+  ctx.filter = 'none'
+
+  // 2. Warm amber shadow overlay (faded-film effect)
+  ctx.globalCompositeOperation = 'source-over'
+  ctx.fillStyle = 'rgba(20, 12, 3, 0.07)'
+  ctx.fillRect(0, 0, W, H)
+
+  // 3. Vignette: dark edges → depth + helps text legibility
+  const inner = Math.min(W, H) * 0.30
+  const outer = Math.max(W, H) * 0.78
+  const vignette = ctx.createRadialGradient(W / 2, H / 2, inner, W / 2, H / 2, outer)
+  vignette.addColorStop(0, 'rgba(0,0,0,0)')
+  vignette.addColorStop(1, 'rgba(0,0,0,0.46)')
+  ctx.fillStyle = vignette
+  ctx.fillRect(0, 0, W, H)
+
+  return canvas.toDataURL('image/jpeg', 0.92)
 }
