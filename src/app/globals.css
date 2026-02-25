@@ -152,7 +152,7 @@
 /* Legacy haiku font class */
 .font-haiku {
   font-family: var(--font-yusei), var(--font-klee-one), "Hiragino Mincho ProN", cursive;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.12em;
 }
 
 /* ── Range input custom style (text color slider) ── */

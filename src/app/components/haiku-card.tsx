@@ -41,7 +41,7 @@ export function HaikuCard({
       : "items-center";
 
   // Stagger offset for each line: 0, 1em, 2em drop
-  const lineOffsets = [0, 1.2, 2.4];
+  const lineOffsets = [0, 0.7, 1.4];
 
   return (
     <motion.div
@@ -70,7 +70,7 @@ export function HaikuCard({
           style={{
             fontFamily: "var(--font-yusei), var(--font-klee-one), 'Hiragino Mincho ProN', cursive",
             color: "white",
-            gap: "0.5em",
+            gap: "0.35em",
           }}
         >
           {haiku.map((line, i) => (
@@ -83,7 +83,7 @@ export function HaikuCard({
                 writingMode: "vertical-rl",
                 whiteSpace: "nowrap",
                 fontSize: "1.5rem",
-                letterSpacing: "0.3em",
+                letterSpacing: "0.12em",
                 marginTop: `${lineOffsets[i]}em`,
               }}
             >
