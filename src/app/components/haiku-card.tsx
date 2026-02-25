@@ -1,89 +1,94 @@
-import { useState } from "react";
-import { Heart, MessageCircle, Share2, Bookmark } from "lucide-react";
-import { motion } from "motion/react";
+'use client'
 
-interface HaikuCardProps {
-  id: string;
-  imageUrl: string;
-  haiku: string[];
-  author: string;
-  authorAvatar: string;
-  likes: number;
-  comments: number;
-  timestamp: string;
-  textPosition?: "left" | "right" | "center";
-}
+import { useState } from 'react'
+import { Heart, Share2, Download } from 'lucide-react'
+import { motion } from 'motion/react'
+import type { Post } from '@/types'
+
+type HaikuCardProps = Pick<Post, 'imageUrl' | 'haiku' | 'textPos' | 'textGray' | 'aspectRatio' | 'likes' | 'timestamp'>
+
+const lineOffsets = [0, 1.2, 2.4]
 
 export function HaikuCard({
   imageUrl,
   haiku,
-  author,
-  authorAvatar,
+  textPos,
+  textGray,
+  aspectRatio,
   likes: initialLikes,
-  comments,
   timestamp,
-  textPosition = "right",
 }: HaikuCardProps) {
-  const [liked, setLiked] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [likes, setLikes] = useState(initialLikes);
+  const [liked, setLiked] = useState(false)
+  const [likes, setLikes] = useState(initialLikes)
+
+  const textColor = `rgb(${textGray}, ${textGray}, ${textGray})`
 
   const handleLike = () => {
-    setLiked(!liked);
-    setLikes(liked ? likes - 1 : likes + 1);
-  };
+    setLiked((prev) => !prev)
+    setLikes((prev) => (liked ? prev - 1 : prev + 1))
+  }
 
-  const positionClass =
-    textPosition === "left"
-      ? "items-start pl-8"
-      : textPosition === "right"
-      ? "items-end pr-8"
-      : "items-center";
+  const handleShare = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: '詠みびとしらず', text: haiku.join(' / '), url: location.href })
+      } else {
+        await navigator.clipboard.writeText(haiku.join(' / '))
+      }
+    } catch {
+      // user cancelled or unsupported
+    }
+  }
 
-  // Stagger offset for each line: 0, 1em, 2em drop
-  const lineOffsets = [0, 1.2, 2.4];
+  const handleDownload = () => {
+    const a = document.createElement('a')
+    a.href = imageUrl
+    a.download = `yomibito-${Date.now()}.jpg`
+    a.click()
+  }
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 30 }}
+      initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="relative w-full overflow-hidden rounded-2xl shadow-lg"
-      style={{ aspectRatio: "1/1" }}
+      transition={{ duration: 0.45 }}
+      className="relative w-full overflow-hidden rounded-2xl shadow-md"
+      style={{ aspectRatio: `${aspectRatio} / 1` }}
     >
       {/* Background Image */}
-      <img
-        src={imageUrl}
-        alt=""
-        className="absolute inset-0 w-full h-full object-cover"
-      />
+      <img src={imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
 
-      {/* Gradient Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-black/10" />
+      {/* Light gradient */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
 
-      {/* Vertical Haiku Text - right to left, staggered drop */}
+      {/* Haiku text – position from textPos (percentage-based) */}
       <div
-        className={`absolute inset-0 flex flex-col justify-center ${positionClass} z-10`}
+        className="absolute z-10 pointer-events-none"
+        style={{
+          left: `${textPos.x}%`,
+          top: `${textPos.y}%`,
+          transform: 'translate(-50%, -50%)',
+        }}
       >
         <div
           className="flex flex-row-reverse items-start"
           style={{
             fontFamily: "var(--font-klee-one), 'Hiragino Mincho ProN', cursive",
-            color: "white",
-            gap: "0.5em",
+            color: textColor,
+            gap: '0.5em',
           }}
         >
           {haiku.map((line, i) => (
             <motion.span
               key={i}
-              initial={{ opacity: 0, x: 20 }}
+              initial={{ opacity: 0, x: 12 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3 + i * 0.2, duration: 0.6 }}
+              transition={{ delay: 0.25 + i * 0.15, duration: 0.5 }}
               style={{
-                writingMode: "vertical-rl",
-                whiteSpace: "nowrap",
-                fontSize: "1.5rem",
-                letterSpacing: "0.3em",
+                writingMode: 'vertical-rl',
+                whiteSpace: 'nowrap',
+                fontSize: '1.4rem',
+                letterSpacing: '0.3em',
                 marginTop: `${lineOffsets[i]}em`,
               }}
             >
@@ -93,85 +98,37 @@ export function HaikuCard({
         </div>
       </div>
 
-      {/* Bottom Info Bar */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 z-20">
-        <div className="flex items-end justify-between">
-          {/* Author info */}
-          <div className="flex items-center gap-2.5">
-              {authorAvatar.startsWith('http') ? (
-                <img
-                  src={authorAvatar}
-                  alt={author}
-                  className="w-9 h-9 rounded-full border-2 border-white/40 object-cover"
-                />
-              ) : (
-                <div
-                  className="w-9 h-9 rounded-full border-2 border-white/40 bg-white/20 flex items-center justify-center shrink-0"
-                  style={{ fontFamily: "'Zen Maru Gothic', sans-serif", fontSize: '0.85rem', color: 'white' }}
-                >
-                  {authorAvatar}
-                </div>
-              )}
-            <div>
-              <p
-                className="text-white/90"
-                style={{
-                  fontFamily: "'Zen Maru Gothic', sans-serif",
-                  fontSize: "0.8rem",
-                }}
-              >
-                {author}
-              </p>
-              <p className="text-white/50" style={{ fontSize: "0.65rem" }}>
-                {timestamp}
-              </p>
-            </div>
-          </div>
+      {/* Bottom action bar */}
+      <div className="absolute bottom-0 left-0 right-0 px-4 py-3 z-20 flex items-center justify-between">
+        {/* Timestamp */}
+        <span
+          className="text-white/50"
+          style={{ fontFamily: "'Zen Maru Gothic', sans-serif", fontSize: '0.6rem' }}
+        >
+          {timestamp}
+        </span>
 
-          {/* Action buttons */}
-          <div className="flex items-center gap-4">
-            <button
-              onClick={handleLike}
-              className="flex flex-col items-center gap-0.5"
-            >
-              <Heart
-                size={22}
-                className={`transition-all duration-200 ${
-                  liked
-                    ? "fill-rose-400 text-rose-400 scale-110"
-                    : "text-white/80"
-                }`}
-              />
-              <span
-                className="text-white/70"
-                style={{ fontSize: "0.6rem" }}
-              >
-                {likes}
-              </span>
-            </button>
-            <button className="flex flex-col items-center gap-0.5">
-              <MessageCircle size={20} className="text-white/80" />
-              <span
-                className="text-white/70"
-                style={{ fontSize: "0.6rem" }}
-              >
-                {comments}
-              </span>
-            </button>
-            <button>
-              <Share2 size={19} className="text-white/80" />
-            </button>
-            <button onClick={() => setSaved(!saved)}>
-              <Bookmark
-                size={20}
-                className={`transition-all duration-200 ${
-                  saved ? "fill-white text-white" : "text-white/80"
-                }`}
-              />
-            </button>
-          </div>
+        {/* Actions: like / share / download */}
+        <div className="flex items-center gap-4">
+          <button onClick={handleLike} className="flex items-center gap-1">
+            <Heart
+              size={20}
+              className={`transition-all duration-200 ${
+                liked ? 'fill-rose-400 text-rose-400 scale-110' : 'text-white/80'
+              }`}
+            />
+            <span className="text-white/70" style={{ fontSize: '0.6rem' }}>
+              {likes}
+            </span>
+          </button>
+          <button onClick={handleShare}>
+            <Share2 size={19} className="text-white/80" />
+          </button>
+          <button onClick={handleDownload}>
+            <Download size={19} className="text-white/80" />
+          </button>
         </div>
       </div>
     </motion.div>
-  );
+  )
 }

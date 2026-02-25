@@ -5,15 +5,16 @@ import { ArrowLeft, Upload, Sparkles, Send, RotateCcw, Scissors, Check, X } from
 import { motion, AnimatePresence } from 'motion/react'
 import { toast } from 'sonner'
 import { findBestTextPlacement, applyFilmTone } from '@/lib/imageAnalysis'
-import type { PoemMode } from '@/types'
+import type { PoemMode, Post } from '@/types'
 
 interface ComposeScreenProps {
   onBack: () => void
+  onPost: (post: Post) => void
 }
 
 const lineOffsets = [0, 1.2, 2.4]
 
-export function ComposeScreen({ onBack }: ComposeScreenProps) {
+export function ComposeScreen({ onBack, onPost }: ComposeScreenProps) {
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
   const [haiku, setHaiku] = useState<string[] | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
@@ -323,6 +324,23 @@ export function ComposeScreen({ onBack }: ComposeScreenProps) {
 
   const handleCropPointerUp = useCallback(() => { cropDragRef.current = null }, [])
 
+  const handlePost = () => {
+    if (!haiku || !uploadedImage) return
+    onPost({
+      id: Date.now().toString(),
+      imageUrl: uploadedImage,
+      haiku,
+      poemMode,
+      textPos,
+      textGray,
+      aspectRatio: imageAspectRatio,
+      likes: 0,
+      timestamp: 'たった今',
+      createdAt: Date.now(),
+    })
+    onBack()
+  }
+
   const hasContent = !!haiku && haiku.length > 0
 
   return (
@@ -340,6 +358,7 @@ export function ComposeScreen({ onBack }: ComposeScreenProps) {
         </span>
         <button
           disabled={!hasContent}
+          onClick={handlePost}
           className={`px-4 py-1.5 rounded-full transition-all ${
             hasContent ? 'bg-gray-900 text-white' : 'bg-gray-200 text-gray-400'
           }`}

@@ -33,8 +33,8 @@ const yosugaraFont = localFont({
 })
 
 export const metadata: Metadata = {
-  title: 'haiking — 俳句 × ハイキング',
-  description: '写真をアップロードして、情景に合った俳句をAIが生成します。',
+  title: '詠みびとしらず',
+  description: 'あなたの写真とAIのことばで、今日を切り取る。',
   icons: { icon: '/favicon.ico' },
 }
 
