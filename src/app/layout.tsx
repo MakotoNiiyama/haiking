@@ -33,15 +33,11 @@ const yuseiMagic = Yusei_Magic({
 })
 
 // ── 夕すがら手書きフォント（セルフホスト）───────────────────────────
-// 1. src/app/fonts/yosugara.ttf を配置する
-// 2. 下のコメントを外す
-// 3. <body> classNameの yuseiMagic.variable を yosugaraFont.variable に差し替える
-// ─────────────────────────────────────────────────────────
-// const yosugaraFont = localFont({
-//   src: './fonts/yosugara.ttf',   // .otf の場合は屢子変更
-//   variable: '--font-yusei',      // 同じ変数名を別名になるのでCSS変更不要
-//   display: 'swap',
-// })
+const yosugaraFont = localFont({
+  src: './fonts/yosugaraver1_2.ttf',
+  variable: '--font-yusei',
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
   title: 'haiking — 俳句 × ハイキング',
@@ -57,8 +53,7 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <body
-        className={`${kleeOne.variable} ${zenMaruGothic.variable} ${notoSerifJP.variable} ${yuseiMagic.variable} antialiased`}
-        // ↑ 夜すがらフォント適用後はここを yosugaraFont.variable に差し替え
+        className={`${kleeOne.variable} ${zenMaruGothic.variable} ${notoSerifJP.variable} ${yosugaraFont.variable} antialiased`}
       >
         {children}
         <Toaster richColors position="top-center" />
