@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { Heart, Share2, Download } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { Heart, Share2, Download, Loader2 } from 'lucide-react'
 import { motion } from 'motion/react'
 import type { Post } from '@/types'
 
@@ -20,6 +20,9 @@ export function HaikuCard({
 }: HaikuCardProps) {
   const [liked, setLiked] = useState(false)
   const [likes, setLikes] = useState(initialLikes)
+  const [isDownloading, setIsDownloading] = useState(false)
+  const cardRef = useRef<HTMLDivElement>(null)
+  const actionsRef = useRef<HTMLDivElement>(null)
 
   const textColor = `rgb(${textGray}, ${textGray}, ${textGray})`
 
@@ -40,15 +43,39 @@ export function HaikuCard({
     }
   }
 
-  const handleDownload = () => {
-    const a = document.createElement('a')
-    a.href = imageUrl
-    a.download = `yomibito-${Date.now()}.jpg`
-    a.click()
+  const handleDownload = async () => {
+    if (!cardRef.current || isDownloading) return
+    setIsDownloading(true)
+    try {
+      // アクションバーを一時的に非表示にしてキャプチャ
+      if (actionsRef.current) actionsRef.current.style.visibility = 'hidden'
+      const html2canvas = (await import('html2canvas')).default
+      const canvas = await html2canvas(cardRef.current, {
+        useCORS: true,
+        allowTaint: false,
+        scale: 2, // Retina-quality
+        logging: false,
+      })
+      if (actionsRef.current) actionsRef.current.style.visibility = ''
+      const blob = await new Promise<Blob>((res) =>
+        canvas.toBlob((b) => res(b!), 'image/png')
+      )
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `yomibito-${Date.now()}.png`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      if (actionsRef.current) actionsRef.current.style.visibility = ''
+    } finally {
+      setIsDownloading(false)
+    }
   }
 
   return (
     <motion.div
+      ref={cardRef}
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45 }}
@@ -99,7 +126,7 @@ export function HaikuCard({
       </div>
 
       {/* Bottom action bar */}
-      <div className="absolute bottom-0 left-0 right-0 px-4 py-3 z-20 flex items-center justify-between">
+      <div ref={actionsRef} className="absolute bottom-0 left-0 right-0 px-4 py-3 z-20 flex items-center justify-between">
         {/* Timestamp */}
         <span
           className="text-white/50"
@@ -124,8 +151,10 @@ export function HaikuCard({
           <button onClick={handleShare}>
             <Share2 size={19} className="text-white/80" />
           </button>
-          <button onClick={handleDownload}>
-            <Download size={19} className="text-white/80" />
+          <button onClick={handleDownload} disabled={isDownloading}>
+            {isDownloading
+              ? <Loader2 size={19} className="text-white/60 animate-spin" />
+              : <Download size={19} className="text-white/80" />}
           </button>
         </div>
       </div>
