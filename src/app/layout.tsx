@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import localFont from 'next/font/local'
-import { Noto_Serif_JP, Klee_One, Zen_Maru_Gothic, Yusei_Magic } from 'next/font/google'
+import { Noto_Serif_JP, Klee_One, Zen_Maru_Gothic } from 'next/font/google'
 import { Toaster } from '@/app/components/ui/sonner'
 import './globals.css'
 
@@ -22,13 +22,6 @@ const notoSerifJP = Noto_Serif_JP({
   variable: '--font-noto-serif-jp',
   subsets: ['latin'],
   weight: ['400', '700'],
-  display: 'swap',
-})
-
-const yuseiMagic = Yusei_Magic({
-  variable: '--font-yusei',
-  subsets: ['latin'],
-  weight: ['400'],
   display: 'swap',
 })
 
