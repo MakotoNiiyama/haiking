@@ -488,7 +488,7 @@ export function ComposeScreen({ onBack, onPost }: ComposeScreenProps) {
                               style={{
                                 writingMode: 'vertical-rl',
                                 whiteSpace: 'nowrap',
-                                fontSize: '1.3rem',
+                                fontSize: '1.4rem',
                                 letterSpacing: '0.3em',
                                 marginTop: `${lineOffsets[i]}em`,
                                 userSelect: 'none',
@@ -545,7 +545,7 @@ export function ComposeScreen({ onBack, onPost }: ComposeScreenProps) {
                               style={{
                                 writingMode: 'vertical-rl',
                                 whiteSpace: 'nowrap',
-                                fontSize: '1.3rem',
+                                fontSize: '1.4rem',
                                 letterSpacing: '0.3em',
                                 marginTop: `${lineOffsets[i]}em`,
                                 userSelect: 'none',
