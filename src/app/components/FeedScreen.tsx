@@ -94,7 +94,7 @@ export function FeedScreen({ posts }: FeedScreenProps) {
           className="text-gray-400 mt-1"
           style={{ fontFamily: "'Zen Maru Gothic', sans-serif", fontSize: '0.65rem' }}
         >
-          世界中の誰かが撮った一瞬と、言葉
+          あなたの写真とAIのことばで、今日を切り取る。
         </p>
       </div>
 
