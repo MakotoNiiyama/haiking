@@ -149,17 +149,20 @@ export function ComposeScreen({ onBack }: ComposeScreenProps) {
     [],
   )
 
-  // 俳句が初めて表示されたとき、テキストサイズを計測して初期位置をクランプする
+  // 俳句テキストが DOM に現れた後（isGenerating=false かつ haiku あり）に
+  // 実サイズを計測して初期位置をクランプする
+  // ※ haiku だけを依存にすると isGenerating がまだ true で textElRef が null になるため
+  //   isGenerating も依存に含め、false になったタイミングで計測する
   useEffect(() => {
-    if (!haiku) return
-    // 1フレーム待ってから計測（レンダリング完了後）
+    if (!haiku || isGenerating) return
+    // 1フレーム待ってから計測（AnimatePresence のアニメ開始後にサイズが確定）
     const id = requestAnimationFrame(() => {
       const { halfW, halfH } = measureHalf()
       if (halfW === 0 && halfH === 0) return
       setTextPos((prev) => clampPos(prev.x, prev.y, halfW, halfH))
     })
     return () => cancelAnimationFrame(id)
-  }, [haiku, measureHalf, clampPos])
+  }, [haiku, isGenerating, measureHalf, clampPos])
 
   // --- Draggable text (pointer events) ---
   const handlePointerDown = (e: React.PointerEvent) => {
