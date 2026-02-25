@@ -171,12 +171,12 @@ export async function findBestTextPlacement(dataUrl: string): Promise<TextPlacem
   }
 
   // Center of best block in percentage.
-  // Vertical text block occupies ~20% width × ~45% height of the card.
-  // Clamp so the block center never lets text escape the frame, accounting for:
-  //   - horizontal: 3 text columns ≈ 20% total width  → half = 10%, + 10% margin
-  //   - vertical:   staggered lines ≈ 48% total height → half = 24%, add margins
+  // Stagger offsets extend DOWNWARD only ([0, 1.2, 2.4]em), so:
+  //   - top margin: half text-block height ≈ 18%
+  //   - bottom margin: half + stagger extra ≈ 35% from bottom → y ≤ 65%
+  //   - horizontal: 3 columns ≈ 20% width → x: 20–80%
   const x = Math.max(20, Math.min(80, ((bestCol + 0.5) / COLS) * 100))
-  const y = Math.max(30, Math.min(62, ((bestRow + 0.5) / ROWS) * 100))
+  const y = Math.max(18, Math.min(65, ((bestRow + 0.5) / ROWS) * 100))
 
   // Always use white text (gray=235) — film-toned images are darker,
   // and white reads universally well on the vignette/gradient overlay.

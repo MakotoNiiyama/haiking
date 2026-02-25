@@ -149,7 +149,7 @@ export function ComposeScreen({ onBack }: ComposeScreenProps) {
     const dx = ((e.clientX - dragStartRef.current.x) / rect.width) * 100
     const dy = ((e.clientY - dragStartRef.current.y) / rect.height) * 100
     const newX = Math.max(20, Math.min(80, dragStartRef.current.posX + dx))
-    const newY = Math.max(30, Math.min(62, dragStartRef.current.posY + dy))
+    const newY = Math.max(18, Math.min(65, dragStartRef.current.posY + dy))
     setTextPos({ x: newX, y: newY })
   }
 
