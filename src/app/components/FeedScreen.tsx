@@ -14,7 +14,7 @@ const MOCK_POSTS: Post[] = [
     poemMode: 'haiku',
     textPos: { x: 75, y: 50 },
     textGray: 255,
-    aspectRatio: 1,
+    aspectRatio: 1.5,   // 3:2 landscape
     likes: 142,
     timestamp: '2時間前',
     createdAt: Date.now() - 2 * 60 * 60 * 1000,
@@ -27,7 +27,7 @@ const MOCK_POSTS: Post[] = [
     poemMode: 'haiku',
     textPos: { x: 25, y: 50 },
     textGray: 255,
-    aspectRatio: 1,
+    aspectRatio: 1.778, // 16:9 landscape
     likes: 98,
     timestamp: '5時間前',
     createdAt: Date.now() - 5 * 60 * 60 * 1000,
@@ -40,7 +40,7 @@ const MOCK_POSTS: Post[] = [
     poemMode: 'haiku',
     textPos: { x: 75, y: 50 },
     textGray: 255,
-    aspectRatio: 1,
+    aspectRatio: 0.75,  // 3:4 portrait
     likes: 215,
     timestamp: '昨日',
     createdAt: Date.now() - 24 * 60 * 60 * 1000,
@@ -53,7 +53,7 @@ const MOCK_POSTS: Post[] = [
     poemMode: 'haiku',
     textPos: { x: 50, y: 50 },
     textGray: 255,
-    aspectRatio: 1,
+    aspectRatio: 1.333, // 4:3 landscape
     likes: 77,
     timestamp: '2日前',
     createdAt: Date.now() - 2 * 24 * 60 * 60 * 1000,
@@ -66,7 +66,7 @@ const MOCK_POSTS: Post[] = [
     poemMode: 'haiku',
     textPos: { x: 25, y: 50 },
     textGray: 255,
-    aspectRatio: 1,
+    aspectRatio: 0.8,   // 4:5 portrait
     likes: 189,
     timestamp: '3日前',
     createdAt: Date.now() - 3 * 24 * 60 * 60 * 1000,
