@@ -53,10 +53,10 @@ export default function App() {
         <AnimatePresence mode="wait">
           <motion.button
             key={isCompose ? 'fab-home' : 'fab-compose'}
-            initial={{ scale: 0, rotate: -90 }}
-            animate={{ scale: 1, rotate: 0 }}
-            exit={{ scale: 0, rotate: 90 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 22 }}
+            initial={{ scale: 0.6, opacity: 0, rotate: -30 }}
+            animate={{ scale: 1, opacity: 1, rotate: 0 }}
+            exit={{ scale: 0.6, opacity: 0, rotate: 30 }}
+            transition={{ duration: 0.12, ease: 'easeOut' }}
             onClick={() => setActiveTab(isCompose ? 'home' : 'compose')}
             className="bg-gray-900 text-white rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.28)] active:scale-95 transition-transform flex items-center justify-center"
             style={{ width: '56px', height: '56px' }}
