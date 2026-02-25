@@ -23,6 +23,7 @@ export function ComposeScreen({ onBack }: ComposeScreenProps) {
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
+  const textElRef = useRef<HTMLDivElement>(null) // ドラッグ可能テキスト要素（サイズ計測用）
   const croppedForApiRef = useRef<string | null>(null) // フィルムトーン前のクロップ済画像（AI送信用）
   const dragStartRef = useRef<{
     x: number
@@ -77,7 +78,6 @@ export function ComposeScreen({ onBack }: ComposeScreenProps) {
       ])
       setUploadedImage(filteredUrl) // スピナーが乗ったまま画像が即座に出る
       setTextPos({ x: placement.x, y: placement.y })
-      setTextGray(placement.gray)
     } catch {
       setUploadedImage(croppedUrl)
     }
@@ -148,8 +148,13 @@ export function ComposeScreen({ onBack }: ComposeScreenProps) {
     const rect = cardRef.current.getBoundingClientRect()
     const dx = ((e.clientX - dragStartRef.current.x) / rect.width) * 100
     const dy = ((e.clientY - dragStartRef.current.y) / rect.height) * 100
-    const newX = Math.max(20, Math.min(80, dragStartRef.current.posX + dx))
-    const newY = Math.max(18, Math.min(65, dragStartRef.current.posY + dy))
+    // テキスト要素の実サイズをパーセントに換算してクランプ（テキストが枠外にはみ出さないよう）
+    const textW = textElRef.current ? (textElRef.current.offsetWidth / rect.width) * 100 : 0
+    const textH = textElRef.current ? (textElRef.current.offsetHeight / rect.height) * 100 : 0
+    const halfW = textW / 2
+    const halfH = textH / 2
+    const newX = Math.max(halfW, Math.min(100 - halfW, dragStartRef.current.posX + dx))
+    const newY = Math.max(halfH, Math.min(100 - halfH, dragStartRef.current.posY + dy))
     setTextPos({ x: newX, y: newY })
   }
 
@@ -259,6 +264,7 @@ export function ComposeScreen({ onBack }: ComposeScreenProps) {
                       onPointerUp={handlePointerUp}
                     >
                       <div
+                        ref={textElRef}
                         className="flex flex-row-reverse items-start"
                         style={{
                           fontFamily: "var(--font-klee-one), 'Hiragino Mincho ProN', cursive",
