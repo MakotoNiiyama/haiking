@@ -189,9 +189,9 @@ export async function findBestTextPlacement(dataUrl: string): Promise<TextPlacem
  * Apply a film-camera color grade to an image.
  *
  * Effect layers:
- *  1. CSS filter: contrast up, saturation down, slight sepia warm tone, slight darken
- *  2. Warm shadow overlay: lifts the "film" feel with a faint amber cast
- *  3. Vignette: radial gradient darkens edges for depth and helps white text pop
+ *  1. CSS filter: preserve brightness, desaturate, warm sepia, slight contrast
+ *  2. Faded-film matte: warm light overlay lifts shadows (bleached/faded look)
+ *  3. Vignette: subtle edge darkening for depth, kept light to avoid over-darkening
  *
  * Returns a JPEG DataURL. Processing happens on Canvas in ~20–50 ms.
  */
@@ -205,22 +205,22 @@ export async function applyFilmTone(dataUrl: string): Promise<string> {
   canvas.height = H
   const ctx = canvas.getContext('2d')!
 
-  // 1. Film-grade: boost contrast, desaturate, add warm sepia, darken slightly
-  ctx.filter = 'contrast(1.14) saturate(0.72) sepia(0.20) brightness(0.87)'
+  // 1. Film-grade: neutral brightness, desaturate, warm sepia — no darkening
+  ctx.filter = 'contrast(1.08) saturate(0.78) sepia(0.28) brightness(1.0)'
   ctx.drawImage(img, 0, 0)
   ctx.filter = 'none'
 
-  // 2. Warm amber shadow overlay (faded-film effect)
+  // 2. Faded-film matte: warm light overlay lifts blacks (vintage bleach effect)
   ctx.globalCompositeOperation = 'source-over'
-  ctx.fillStyle = 'rgba(20, 12, 3, 0.07)'
+  ctx.fillStyle = 'rgba(240, 218, 180, 0.10)'
   ctx.fillRect(0, 0, W, H)
 
-  // 3. Vignette: dark edges → depth + helps text legibility
-  const inner = Math.min(W, H) * 0.30
-  const outer = Math.max(W, H) * 0.78
+  // 3. Vignette: gentle edge darkening for depth (lighter than before)
+  const inner = Math.min(W, H) * 0.38
+  const outer = Math.max(W, H) * 0.82
   const vignette = ctx.createRadialGradient(W / 2, H / 2, inner, W / 2, H / 2, outer)
   vignette.addColorStop(0, 'rgba(0,0,0,0)')
-  vignette.addColorStop(1, 'rgba(0,0,0,0.46)')
+  vignette.addColorStop(1, 'rgba(0,0,0,0.26)')
   ctx.fillStyle = vignette
   ctx.fillRect(0, 0, W, H)
 
