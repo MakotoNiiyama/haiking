@@ -328,12 +328,12 @@ export function ComposeScreen({ onBack }: ComposeScreenProps) {
   return (
     <div className="flex flex-col h-full bg-[#fafafa]">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-black/5">
+      <div className="relative flex items-center justify-between px-4 py-3 border-b border-black/5">
         <button onClick={onBack} className="p-1">
           <ArrowLeft size={22} className="text-gray-700" />
         </button>
         <span
-          className="text-gray-800"
+          className="absolute left-1/2 -translate-x-1/2 text-gray-800"
           style={{ fontFamily: "'Zen Maru Gothic', sans-serif", fontSize: '0.95rem' }}
         >
           つくる
