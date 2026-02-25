@@ -1,4 +1,5 @@
 export type AppStep = 'upload' | 'crop' | 'generating' | 'edit'
+export type PoemMode = 'haiku' | 'senryu'
 
 export interface HaikuResult {
   lines: [string, string, string]

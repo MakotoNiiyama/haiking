@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { ArrowLeft, Upload, Sparkles, Send, RotateCcw } from 'lucide-react'
+import { ArrowLeft, Upload, Sparkles, Send, RotateCcw, Scissors, Check, X } from 'lucide-react'
 import { motion, AnimatePresence } from 'motion/react'
 import { toast } from 'sonner'
-import { autoCropToSquare, findBestTextPlacement, applyFilmTone } from '@/lib/imageAnalysis'
+import { findBestTextPlacement, applyFilmTone } from '@/lib/imageAnalysis'
+import type { PoemMode } from '@/types'
 
 interface ComposeScreenProps {
   onBack: () => void
@@ -20,26 +21,42 @@ export function ComposeScreen({ onBack }: ComposeScreenProps) {
   const [textPos, setTextPos] = useState({ x: 65, y: 40 })
   const [isDragging, setIsDragging] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
+  const [poemMode, setPoemMode] = useState<PoemMode>('haiku')
+  const [imageAspectRatio, setImageAspectRatio] = useState<number>(1)
+  // トリミングモード
+  const [isCropMode, setIsCropMode] = useState(false)
+  const [cropRect, setCropRect] = useState<{ x: number; y: number; size: number } | null>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const textElRef = useRef<HTMLDivElement>(null) // ドラッグ可能テキスト要素（サイズ計測用）
-  const croppedForApiRef = useRef<string | null>(null) // フィルムトーン前のクロップ済画像（AI送信用）
+  const croppedForApiRef = useRef<string | null>(null) // AI送信用画像（元アスペクト比）
+  // poemModeを useCallback depに依存させず最新値を参照するため refで持つ
+  const poemModeRef = useRef<PoemMode>('haiku')
+  const cropDragRef = useRef<{
+    type: 'move' | 'resize-se'
+    startX: number
+    startY: number
+    startRect: { x: number; y: number; size: number }
+  } | null>(null)
   const dragStartRef = useRef<{
     x: number
     y: number
     posX: number
     posY: number
-    halfW: number // カード幅に対するテキスト半幅 (%)
-    halfH: number // カード高に対するテキスト半高 (%)
+    halfW: number
+    halfH: number
   } | null>(null)
+
+  // poemMode 変更を ref に同期
+  useEffect(() => { poemModeRef.current = poemMode }, [poemMode])
 
   const textColor = `rgb(${textGray}, ${textGray}, ${textGray})`
 
   /**
-   * 画像選択時のフロー：
-   *  ① DataURL 変換 → ② 自動クロップ → ③ AIリクエストを即座に開始
-   *  ④ 待機中に filmTone + 配置分析を並列実行 (高速, ~50ms) → 番画すぐ表示
+   * 画像選択時のフロー（自動正方形クロップなし・元アスペクト比を保持）：
+   *  ① DataURL 変換 → ② アスペクト比検出 → ③ AIリクエストを即座に開始
+   *  ④ 待機中に filmTone + 配置分析を並列実行 → 画像すぐ表示
    *  ⑤ AI 完了時に俳句をテキストとしてアニメーション表示
    */
   const handleFileSelect = useCallback(async (file: File) => {
@@ -53,35 +70,38 @@ export function ComposeScreen({ onBack }: ComposeScreenProps) {
       reader.readAsDataURL(file)
     })
 
-    // ② 自動クロップ
+    // ② 元画像のアスペクト比を検出してカードに反映
+    const naturalRatio = await new Promise<number>((resolve) => {
+      const img = new Image()
+      img.onload = () => resolve(img.naturalWidth / img.naturalHeight)
+      img.src = rawDataUrl
+    })
+    setImageAspectRatio(naturalRatio)
+    setIsCropMode(false)
+    setCropRect(null)
+
     setIsGenerating(true)
     setHaiku(null)
     setUploadedImage(null)
-    let croppedUrl = rawDataUrl
-    try {
-      croppedUrl = await autoCropToSquare(rawDataUrl)
-    } catch (e) {
-      console.warn('autoCropToSquare failed, using original', e)
-    }
-    croppedForApiRef.current = croppedUrl
+    croppedForApiRef.current = rawDataUrl
 
     // ③ AIリクエストを即座に開始 (遅い, 3–10秒)
     const apiPromise = fetch('/api/generate-haiku', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ imageBase64: croppedUrl }),
+      body: JSON.stringify({ imageBase64: rawDataUrl, mode: poemModeRef.current }),
     })
 
     // ④ 待機中に filmTone + 配置分析 (高速プレビュー表示)
     try {
       const [filteredUrl, placement] = await Promise.all([
-        applyFilmTone(croppedUrl).catch(() => croppedUrl),
-        findBestTextPlacement(croppedUrl),
+        applyFilmTone(rawDataUrl).catch(() => rawDataUrl),
+        findBestTextPlacement(rawDataUrl),
       ])
-      setUploadedImage(filteredUrl) // スピナーが乗ったまま画像が即座に出る
+      setUploadedImage(filteredUrl)
       setTextPos({ x: placement.x, y: placement.y })
     } catch {
-      setUploadedImage(croppedUrl)
+      setUploadedImage(rawDataUrl)
     }
 
     // ⑤ AI 完了待ち (スピナーはここまで続く)
@@ -118,7 +138,7 @@ export function ComposeScreen({ onBack }: ComposeScreenProps) {
       const res = await fetch('/api/generate-haiku', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64: src }),
+        body: JSON.stringify({ imageBase64: src, mode: poemModeRef.current }),
       })
       if (!res.ok) throw new Error(await res.text())
       const data = await res.json()
@@ -197,6 +217,112 @@ export function ComposeScreen({ onBack }: ComposeScreenProps) {
     dragStartRef.current = null
   }
 
+  // --- Trimming (crop mode) ---
+
+  /** トリミングモードに入る。カードの短辺サイズの正方形を中央に初期化する */
+  const enterCropMode = useCallback(() => {
+    if (!cardRef.current) return
+    const rect = cardRef.current.getBoundingClientRect()
+    const size = Math.min(rect.width, rect.height)
+    setCropRect({ x: (rect.width - size) / 2, y: (rect.height - size) / 2, size })
+    setIsCropMode(true)
+  }, [])
+
+  const cancelCropMode = useCallback(() => {
+    setIsCropMode(false)
+    setCropRect(null)
+  }, [])
+
+  /** cropRect を確定してキャンバスでクロップ適用 */
+  const confirmCrop = useCallback(() => {
+    if (!cropRect || !cardRef.current || !uploadedImage) return
+    const cardRect = cardRef.current.getBoundingClientRect()
+    const img = new Image()
+    img.onload = () => {
+      const scaleX = img.naturalWidth / cardRect.width
+      const scaleY = img.naturalHeight / cardRect.height
+      const canvas = document.createElement('canvas')
+      const s = cropRect.size
+      canvas.width = Math.round(s * scaleX)
+      canvas.height = Math.round(s * scaleY)
+      const ctx = canvas.getContext('2d')!
+      ctx.drawImage(
+        img,
+        cropRect.x * scaleX, cropRect.y * scaleY,
+        s * scaleX, s * scaleY,
+        0, 0, canvas.width, canvas.height,
+      )
+      const croppedDataUrl = canvas.toDataURL('image/jpeg', 0.92)
+      // テキスト位置をクロップ後の座標系に変換
+      const textPxX = textPos.x / 100 * cardRect.width
+      const textPxY = textPos.y / 100 * cardRect.height
+      const newTextX = (textPxX - cropRect.x) / s * 100
+      const newTextY = (textPxY - cropRect.y) / s * 100
+      setUploadedImage(croppedDataUrl)
+      setImageAspectRatio(1)
+      setTextPos({ x: newTextX, y: newTextY })
+      setIsCropMode(false)
+      setCropRect(null)
+    }
+    img.src = uploadedImage
+  }, [cropRect, uploadedImage, textPos])
+
+  /** クロップ枠ドラッグ開始 */
+  const handleCropPointerDown = useCallback(
+    (e: React.PointerEvent, type: 'move' | 'resize-se') => {
+      if (!cropRect) return
+      e.preventDefault()
+      e.stopPropagation()
+      ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+      cropDragRef.current = { type, startX: e.clientX, startY: e.clientY, startRect: { ...cropRect } }
+    },
+    [cropRect],
+  )
+
+  /** クロップ枠ドラッグ移動（テキストが枠外に出ないよう制約） */
+  const handleCropPointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!cropDragRef.current || !cropRect || !cardRef.current) return
+      const cardRect = cardRef.current.getBoundingClientRect()
+      const dx = e.clientX - cropDragRef.current.startX
+      const dy = e.clientY - cropDragRef.current.startY
+      const { type, startRect } = cropDragRef.current
+      // テキストのピクセル境界
+      const tHalfW = textElRef.current ? textElRef.current.offsetWidth / 2 : 0
+      const tHalfH = textElRef.current ? textElRef.current.offsetHeight / 2 : 0
+      const tCx = textPos.x / 100 * cardRect.width
+      const tCy = textPos.y / 100 * cardRect.height
+      const tL = tCx - tHalfW; const tR = tCx + tHalfW
+      const tT = tCy - tHalfH; const tB = tCy + tHalfH
+      const hasText = tHalfW > 0 || tHalfH > 0
+      if (type === 'move') {
+        const size = startRect.size
+        let nx = startRect.x + dx
+        let ny = startRect.y + dy
+        // カード内に制限
+        nx = Math.max(0, Math.min(cardRect.width - size, nx))
+        ny = Math.max(0, Math.min(cardRect.height - size, ny))
+        // テキストを枠内に保持
+        if (hasText) {
+          nx = Math.min(tL, Math.max(tR - size, nx))
+          ny = Math.min(tT, Math.max(tB - size, ny))
+        }
+        setCropRect({ x: nx, y: ny, size })
+      } else {
+        // SE コーナーリサイズ（左上固定・右下だけ移動）
+        const maxSize = Math.min(cardRect.width - startRect.x, cardRect.height - startRect.y)
+        const minSize = hasText
+          ? Math.max(60, tR - startRect.x, tB - startRect.y)
+          : 60
+        const newSize = Math.max(minSize, Math.min(maxSize, startRect.size + dx))
+        setCropRect({ ...startRect, size: newSize })
+      }
+    },
+    [cropRect, textPos],
+  )
+
+  const handleCropPointerUp = useCallback(() => { cropDragRef.current = null }, [])
+
   const hasContent = !!haiku && haiku.length > 0
 
   return (
@@ -226,6 +352,27 @@ export function ComposeScreen({ onBack }: ComposeScreenProps) {
         </button>
       </div>
 
+      {/* 俳句 / 川柳 モードトグル */}
+      <div className="flex justify-center px-4 py-2 border-b border-black/5">
+        <div className="flex bg-gray-100 rounded-full p-0.5">
+          {(['haiku', 'senryu'] as const).map((mode) => (
+            <button
+              key={mode}
+              disabled={isGenerating}
+              onClick={() => setPoemMode(mode)}
+              className={`px-5 py-1.5 rounded-full text-sm transition-all ${
+                poemMode === mode
+                  ? 'bg-white shadow-sm text-gray-800'
+                  : 'text-gray-400 hover:text-gray-600'
+              } ${isGenerating ? 'opacity-40 cursor-not-allowed' : ''}`}
+              style={{ fontFamily: "'Zen Maru Gothic', sans-serif", fontSize: '0.78rem' }}
+            >
+              {mode === 'haiku' ? '俳句' : '川柳'}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="flex-1 overflow-y-auto">
         {/* Preview Card / Upload Area */}
         <div className="px-5 pt-5 pb-3">
@@ -234,7 +381,7 @@ export function ComposeScreen({ onBack }: ComposeScreenProps) {
             className={`relative w-full overflow-hidden rounded-2xl shadow-md ${
               isDragOver ? 'ring-2 ring-gray-400 ring-offset-2' : ''
             }`}
-            style={{ aspectRatio: '1/1' }}
+            style={{ aspectRatio: `${imageAspectRatio} / 1` }}
             onDragOver={(e) => {
               e.preventDefault()
               setIsDragOver(true)
@@ -271,7 +418,7 @@ export function ComposeScreen({ onBack }: ComposeScreenProps) {
                           className="text-white/90"
                           style={{ fontFamily: "'Zen Maru Gothic', sans-serif", fontSize: '0.8rem' }}
                         >
-                          AIが俳句を詠んでいます…
+                          AIが{poemMode === 'senryu' ? '川柳' : '俳句'}を詠んでいます…
                         </p>
                       </div>
                     </motion.div>
@@ -338,13 +485,85 @@ export function ComposeScreen({ onBack }: ComposeScreenProps) {
                   )}
                 </AnimatePresence>
 
-                {/* Re-upload button */}
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="absolute top-3 left-3 z-20 bg-black/30 backdrop-blur-sm rounded-full p-2 hover:bg-black/50 transition-colors"
-                >
-                  <Upload size={16} className="text-white/80" />
-                </button>
+                {/* Re-upload button (トリミングモード中は隠す) */}
+                {!isCropMode && (
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="absolute top-3 left-3 z-20 bg-black/30 backdrop-blur-sm rounded-full p-2 hover:bg-black/50 transition-colors"
+                  >
+                    <Upload size={16} className="text-white/80" />
+                  </button>
+                )}
+
+                {/* トリミングオーバーレイ */}
+                {isCropMode && cropRect && (
+                  <div
+                    className="absolute inset-0 z-30"
+                    onPointerMove={handleCropPointerMove}
+                    onPointerUp={handleCropPointerUp}
+                  >
+                    {/* 固定表示の俳句テキスト（配置参考用，操作不可） */}
+                    {haiku && (
+                      <div
+                        className="absolute z-10 pointer-events-none"
+                        style={{
+                          left: `${textPos.x}%`,
+                          top: `${textPos.y}%`,
+                          transform: 'translate(-50%, -50%)',
+                        }}
+                      >
+                        <div
+                          className="flex flex-row-reverse items-start"
+                          style={{
+                            fontFamily: "var(--font-klee-one), 'Hiragino Mincho ProN', cursive",
+                            color: textColor,
+                            gap: '0.5em',
+                          }}
+                        >
+                          {haiku.map((line, i) => (
+                            <span
+                              key={i}
+                              style={{
+                                writingMode: 'vertical-rl',
+                                whiteSpace: 'nowrap',
+                                fontSize: '1.3rem',
+                                letterSpacing: '0.3em',
+                                marginTop: `${lineOffsets[i]}em`,
+                                userSelect: 'none',
+                              }}
+                            >
+                              {line}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {/* クロップ枠（box-shadowで枠外をダークに） */}
+                    <div
+                      className="absolute cursor-move"
+                      style={{
+                        left: cropRect.x,
+                        top: cropRect.y,
+                        width: cropRect.size,
+                        height: cropRect.size,
+                        boxShadow: '0 0 0 9999px rgba(0,0,0,0.55)',
+                        touchAction: 'none',
+                      }}
+                      onPointerDown={(e) => handleCropPointerDown(e, 'move')}
+                    >
+                      {/* 四隅のガイド線 */}
+                      <div className="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-white" />
+                      <div className="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-white" />
+                      <div className="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-white" />
+                      {/* SEリサイズハンドル */}
+                      <div
+                        className="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-white cursor-se-resize"
+                        style={{ touchAction: 'none' }}
+                        onPointerDown={(e) => { e.stopPropagation(); handleCropPointerDown(e, 'resize-se') }}
+                      />
+                    </div>
+                  </div>
+                )}
               </>
             ) : (
               /* Empty state */
@@ -396,21 +615,57 @@ export function ComposeScreen({ onBack }: ComposeScreenProps) {
             animate={{ opacity: 1, y: 0 }}
             className="px-5 pt-2 pb-6"
           >
-            {/* Regenerate */}
-            {haiku && !isGenerating && (
-              <button
-                onClick={regenerateHaiku}
-                className="flex items-center gap-2 mx-auto mb-5 px-5 py-2 bg-white border border-gray-200 rounded-full shadow-sm hover:shadow-md active:scale-95 transition-all"
-              >
-                <RotateCcw size={14} className="text-gray-500" />
-                <span
-                  className="text-gray-600"
-                  style={{ fontFamily: "'Zen Maru Gothic', sans-serif", fontSize: '0.75rem' }}
+            {/* トリミングモード中: confirm / cancel */}
+            {isCropMode ? (
+              <div className="flex gap-3 justify-center mb-5">
+                <button
+                  onClick={cancelCropMode}
+                  className="flex items-center gap-2 px-5 py-2 bg-white border border-gray-200 rounded-full shadow-sm active:scale-95 transition-all"
                 >
-                  もう一句よむ
-                </span>
-              </button>
-            )}
+                  <X size={14} className="text-gray-500" />
+                  <span style={{ fontFamily: "'Zen Maru Gothic', sans-serif", fontSize: '0.75rem' }} className="text-gray-600">キャンセル</span>
+                </button>
+                <button
+                  onClick={confirmCrop}
+                  className="flex items-center gap-2 px-5 py-2 bg-gray-900 text-white rounded-full shadow-sm active:scale-95 transition-all"
+                >
+                  <Check size={14} />
+                  <span style={{ fontFamily: "'Zen Maru Gothic', sans-serif", fontSize: '0.75rem' }}>確定</span>
+                </button>
+              </div>
+            ) : (
+              <>
+                {/* Regenerate */}
+                {haiku && !isGenerating && (
+                  <button
+                    onClick={regenerateHaiku}
+                    className="flex items-center gap-2 mx-auto mb-3 px-5 py-2 bg-white border border-gray-200 rounded-full shadow-sm hover:shadow-md active:scale-95 transition-all"
+                  >
+                    <RotateCcw size={14} className="text-gray-500" />
+                    <span
+                      className="text-gray-600"
+                      style={{ fontFamily: "'Zen Maru Gothic', sans-serif", fontSize: '0.75rem' }}
+                    >
+                      もう一句よむ
+                    </span>
+                  </button>
+                )}
+
+                {/* トリミングボタン */}
+                {haiku && !isGenerating && (
+                  <button
+                    onClick={enterCropMode}
+                    className="flex items-center gap-2 mx-auto mb-5 px-5 py-2 bg-white border border-gray-200 rounded-full shadow-sm hover:shadow-md active:scale-95 transition-all"
+                  >
+                    <Scissors size={14} className="text-gray-500" />
+                    <span
+                      className="text-gray-600"
+                      style={{ fontFamily: "'Zen Maru Gothic', sans-serif", fontSize: '0.75rem' }}
+                    >
+                      正方形にトリミング
+                    </span>
+                  </button>
+                )}
 
             {/* Color slider */}
             {haiku && !isGenerating && (
@@ -465,14 +720,16 @@ export function ComposeScreen({ onBack }: ComposeScreenProps) {
               </div>
             )}
 
-            {haiku && !isGenerating && (
+            {haiku && !isGenerating && !isCropMode && (
               <p
                 className="text-center text-gray-300 mt-4"
                 style={{ fontFamily: "'Zen Maru Gothic', sans-serif", fontSize: '0.6rem' }}
               >
-                俳句をドラッグして配置を調整できます
+                {poemMode === 'senryu' ? '川柳' : '俳句'}をドラッグして配置を調整できます
               </p>
             )}
+          </>
+          )}
           </motion.div>
         )}
       </div>
