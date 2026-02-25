@@ -279,12 +279,12 @@ export function ComposeScreen({ onBack }: ComposeScreenProps) {
                 </AnimatePresence>
 
                 {/* Draggable haiku text */}
+                {/* 位置決め div (transform: translate) と framer-motion アニメ div を分離する。
+                    motion.div に style.transform と initial/animate の scale を同時に指定すると
+                    framer-motion が transform を上書きして translate(-50%,-50%) が無効になるため。 */}
                 <AnimatePresence>
                   {haiku && !isGenerating && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ duration: 0.5 }}
+                    <div
                       className="absolute z-10"
                       style={{
                         left: `${textPos.x}%`,
@@ -297,36 +297,44 @@ export function ComposeScreen({ onBack }: ComposeScreenProps) {
                       onPointerMove={handlePointerMove}
                       onPointerUp={handlePointerUp}
                     >
-                      <div
-                        ref={textElRef}
-                        className="flex flex-row-reverse items-start"
-                        style={{
-                          fontFamily: "var(--font-klee-one), 'Hiragino Mincho ProN', cursive",
-                          color: textColor,
-                          gap: '0.5em',
-                        }}
+                      {/* アニメーション専用 motion.div: transform 系は scale のみ */}
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.9 }}
+                        transition={{ duration: 0.5 }}
                       >
-                        {haiku.map((line, i) => (
-                          <motion.span
-                            key={`${line}-${i}`}
-                            initial={{ opacity: 0, x: 10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: i * 0.15 }}
-                            style={{
-                              writingMode: 'vertical-rl',
-                              whiteSpace: 'nowrap',
-                              fontSize: '1.3rem',
-                              letterSpacing: '0.3em',
-                              marginTop: `${lineOffsets[i]}em`,
-                              userSelect: 'none',
-                              WebkitUserSelect: 'none',
-                            }}
-                          >
-                            {line}
-                          </motion.span>
-                        ))}
-                      </div>
-                    </motion.div>
+                        <div
+                          ref={textElRef}
+                          className="flex flex-row-reverse items-start"
+                          style={{
+                            fontFamily: "var(--font-klee-one), 'Hiragino Mincho ProN', cursive",
+                            color: textColor,
+                            gap: '0.5em',
+                          }}
+                        >
+                          {haiku.map((line, i) => (
+                            <motion.span
+                              key={`${line}-${i}`}
+                              initial={{ opacity: 0, x: 10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: i * 0.15 }}
+                              style={{
+                                writingMode: 'vertical-rl',
+                                whiteSpace: 'nowrap',
+                                fontSize: '1.3rem',
+                                letterSpacing: '0.3em',
+                                marginTop: `${lineOffsets[i]}em`,
+                                userSelect: 'none',
+                                WebkitUserSelect: 'none',
+                              }}
+                            >
+                              {line}
+                            </motion.span>
+                          ))}
+                        </div>
+                      </motion.div>
+                    </div>
                   )}
                 </AnimatePresence>
 
