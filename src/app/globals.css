@@ -144,15 +144,15 @@
   font-family: var(--font-zen-maru), "Hiragino Kaku Gothic ProN", sans-serif;
 }
 
-/* 夕すがら手書きフォント → 漢字は Klee One で補完 */
+/* 俳句テキストフォント */
 .font-yusei {
-  font-family: var(--font-yusei), var(--font-klee-one), "Hiragino Mincho ProN", cursive;
+  font-family: var(--font-klee-one), "Hiragino Mincho ProN", cursive;
 }
 
 /* Legacy haiku font class */
 .font-haiku {
-  font-family: var(--font-yusei), var(--font-klee-one), "Hiragino Mincho ProN", cursive;
-  letter-spacing: 0.12em;
+  font-family: var(--font-klee-one), "Hiragino Mincho ProN", cursive;
+  letter-spacing: 0.15em;
 }
 
 /* ── Range input custom style (text color slider) ── */

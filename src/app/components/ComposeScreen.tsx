@@ -10,7 +10,7 @@ interface ComposeScreenProps {
   onBack: () => void
 }
 
-const lineOffsets = [0, 0.7, 1.4]
+const lineOffsets = [0, 1.2, 2.4]
 
 export function ComposeScreen({ onBack }: ComposeScreenProps) {
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
@@ -261,9 +261,9 @@ export function ComposeScreen({ onBack }: ComposeScreenProps) {
                       <div
                         className="flex flex-row-reverse items-start"
                         style={{
-                          fontFamily: "var(--font-yusei), var(--font-klee-one), 'Hiragino Mincho ProN', cursive",
+                          fontFamily: "var(--font-klee-one), 'Hiragino Mincho ProN', cursive",
                           color: textColor,
-                          gap: '0.35em',
+                          gap: '0.5em',
                         }}
                       >
                         {haiku.map((line, i) => (
@@ -276,7 +276,7 @@ export function ComposeScreen({ onBack }: ComposeScreenProps) {
                               writingMode: 'vertical-rl',
                               whiteSpace: 'nowrap',
                               fontSize: '1.3rem',
-                              letterSpacing: '0.12em',
+                              letterSpacing: '0.3em',
                               marginTop: `${lineOffsets[i]}em`,
                               userSelect: 'none',
                               WebkitUserSelect: 'none',
