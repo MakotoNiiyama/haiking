@@ -49,7 +49,7 @@ export function HaikuCard({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
       className="relative w-full overflow-hidden rounded-2xl shadow-lg"
-      style={{ aspectRatio: "3/4" }}
+      style={{ aspectRatio: "1/1" }}
     >
       {/* Background Image */}
       <img
@@ -98,11 +98,20 @@ export function HaikuCard({
         <div className="flex items-end justify-between">
           {/* Author info */}
           <div className="flex items-center gap-2.5">
-            <img
-              src={authorAvatar}
-              alt={author}
-              className="w-9 h-9 rounded-full border-2 border-white/40 object-cover"
-            />
+              {authorAvatar.startsWith('http') ? (
+                <img
+                  src={authorAvatar}
+                  alt={author}
+                  className="w-9 h-9 rounded-full border-2 border-white/40 object-cover"
+                />
+              ) : (
+                <div
+                  className="w-9 h-9 rounded-full border-2 border-white/40 bg-white/20 flex items-center justify-center shrink-0"
+                  style={{ fontFamily: "'Zen Maru Gothic', sans-serif", fontSize: '0.85rem', color: 'white' }}
+                >
+                  {authorAvatar}
+                </div>
+              )}
             <div>
               <p
                 className="text-white/90"

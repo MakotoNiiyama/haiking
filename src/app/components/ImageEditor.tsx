@@ -90,11 +90,6 @@ export default function ImageEditor({ imageUrl, haiku, onRegenerate, onReset }: 
         </Badge>
       </div>
 
-      {/* ── Explanation ── */}
-      <div className="bg-stone-50 rounded-2xl px-4 py-3 border border-stone-100">
-        <p className="text-xs text-stone-500 leading-relaxed">{haiku.explanation}</p>
-      </div>
-
       {/* ── Filter selector ── */}
       <div>
         <p className="text-xs font-semibold text-stone-500 uppercase tracking-wider mb-3">

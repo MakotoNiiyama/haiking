@@ -4,6 +4,7 @@ import { useState, useRef, useCallback } from 'react'
 import { ArrowLeft, Upload, Sparkles, Send, RotateCcw } from 'lucide-react'
 import { motion, AnimatePresence } from 'motion/react'
 import { toast } from 'sonner'
+import { autoCropToSquare, findBestTextPlacement } from '@/lib/imageAnalysis'
 
 interface ComposeScreenProps {
   onBack: () => void
@@ -31,19 +32,44 @@ export function ComposeScreen({ onBack }: ComposeScreenProps) {
 
   const textColor = `rgb(${textGray}, ${textGray}, ${textGray})`
 
-  const generateHaiku = useCallback(async (imageBase64: string) => {
+  /** 画像を读み込んで autoCropToSquare → API 呼び出し → findBestTextPlacement を並列実行 */
+  const handleFileSelect = useCallback(async (file: File) => {
+    if (!file.type.startsWith('image/')) return
+
+    // ① ファイルを DataURL に変換
+    const rawDataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = (e) => resolve(e.target?.result as string)
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
+
+    // ② 自動クロップ（短辺基準の正方形，情報量が多い領域を自動選択）
     setIsGenerating(true)
     setHaiku(null)
+    let croppedUrl = rawDataUrl
     try {
-      const res = await fetch('/api/generate-haiku', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64 }),
-      })
-      if (!res.ok) throw new Error(await res.text())
-      const data = await res.json()
+      croppedUrl = await autoCropToSquare(rawDataUrl)
+    } catch (e) {
+      console.warn('autoCropToSquare failed, using original', e)
+    }
+    setUploadedImage(croppedUrl)
+
+    // ③ 俳句生成 + テキスト配置分析を並列実行
+    try {
+      const [apiRes, placement] = await Promise.all([
+        fetch('/api/generate-haiku', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageBase64: croppedUrl }),
+        }),
+        findBestTextPlacement(croppedUrl),
+      ])
+      if (!apiRes.ok) throw new Error(await apiRes.text())
+      const data = await apiRes.json()
       setHaiku(data.lines as string[])
-      setTextPos({ x: 65, y: 40 })
+      setTextPos({ x: placement.x, y: placement.y })
+      setTextGray(placement.gray)
     } catch (err) {
       console.error(err)
       toast.error('俳句の生成に失敗しました。もう一度お試しください。')
@@ -51,21 +77,6 @@ export function ComposeScreen({ onBack }: ComposeScreenProps) {
       setIsGenerating(false)
     }
   }, [])
-
-  const handleFileSelect = useCallback(
-    (file: File) => {
-      if (!file.type.startsWith('image/')) return
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const dataUrl = e.target?.result as string
-        setUploadedImage(dataUrl)
-        setHaiku(null)
-        generateHaiku(dataUrl)
-      }
-      reader.readAsDataURL(file)
-    },
-    [generateHaiku],
-  )
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -77,9 +88,26 @@ export function ComposeScreen({ onBack }: ComposeScreenProps) {
     [handleFileSelect],
   )
 
-  const regenerateHaiku = () => {
+  /** 同じ画像で再度俳句だけ生成（クロップ・配置再計算はしない） */
+  const regenerateHaiku = async () => {
     if (!uploadedImage) return
-    generateHaiku(uploadedImage)
+    setIsGenerating(true)
+    setHaiku(null)
+    try {
+      const res = await fetch('/api/generate-haiku', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64: uploadedImage }),
+      })
+      if (!res.ok) throw new Error(await res.text())
+      const data = await res.json()
+      setHaiku(data.lines as string[])
+    } catch (err) {
+      console.error(err)
+      toast.error('俳句の再生成に失敗しました。')
+    } finally {
+      setIsGenerating(false)
+    }
   }
 
   // --- Draggable text (pointer events) ---
@@ -148,7 +176,7 @@ export function ComposeScreen({ onBack }: ComposeScreenProps) {
             className={`relative w-full overflow-hidden rounded-2xl shadow-md ${
               isDragOver ? 'ring-2 ring-gray-400 ring-offset-2' : ''
             }`}
-            style={{ aspectRatio: '3/4' }}
+            style={{ aspectRatio: '1/1' }}
             onDragOver={(e) => {
               e.preventDefault()
               setIsDragOver(true)

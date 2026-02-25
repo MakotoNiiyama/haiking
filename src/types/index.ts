@@ -3,8 +3,7 @@ export type AppStep = 'upload' | 'crop' | 'generating' | 'edit'
 export interface HaikuResult {
   lines: [string, string, string]
   kigo: string
-  season: '春' | '夏' | '秋' | '冬'
-  explanation: string
+  season: '春' | '夏' | '秋' | '冬' | '無季'
 }
 
 export interface Filter {
