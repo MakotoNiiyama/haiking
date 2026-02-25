@@ -68,7 +68,7 @@ export function HaikuCard({
         <div
           className="flex flex-row-reverse items-start"
           style={{
-            fontFamily: "var(--font-yusei), cursive",
+            fontFamily: "var(--font-yusei), var(--font-klee-one), 'Hiragino Mincho ProN', cursive",
             color: "white",
             gap: "0.5em",
           }}

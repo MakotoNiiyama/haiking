@@ -261,7 +261,7 @@ export function ComposeScreen({ onBack }: ComposeScreenProps) {
                       <div
                         className="flex flex-row-reverse items-start"
                         style={{
-                          fontFamily: "var(--font-yusei), cursive",
+                          fontFamily: "var(--font-yusei), var(--font-klee-one), 'Hiragino Mincho ProN', cursive",
                           color: textColor,
                           gap: '0.5em',
                         }}
