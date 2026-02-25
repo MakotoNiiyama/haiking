@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { ArrowLeft, Upload, Sparkles, Send, RotateCcw } from 'lucide-react'
 import { motion, AnimatePresence } from 'motion/react'
 import { toast } from 'sonner'
@@ -30,6 +30,8 @@ export function ComposeScreen({ onBack }: ComposeScreenProps) {
     y: number
     posX: number
     posY: number
+    halfW: number // カード幅に対するテキスト半幅 (%)
+    halfH: number // カード高に対するテキスト半高 (%)
   } | null>(null)
 
   const textColor = `rgb(${textGray}, ${textGray}, ${textGray})`
@@ -129,16 +131,51 @@ export function ComposeScreen({ onBack }: ComposeScreenProps) {
     }
   }
 
+  /** カード基準でテキスト要素の halfW/halfH (%) を返す。計測できない場合は 0 */
+  const measureHalf = useCallback(() => {
+    if (!cardRef.current || !textElRef.current) return { halfW: 0, halfH: 0 }
+    const rect = cardRef.current.getBoundingClientRect()
+    const halfW = (textElRef.current.offsetWidth / rect.width) * 50
+    const halfH = (textElRef.current.offsetHeight / rect.height) * 50
+    return { halfW, halfH }
+  }, [])
+
+  /** textPos を枠内に収まるようクランプして返す */
+  const clampPos = useCallback(
+    (x: number, y: number, halfW: number, halfH: number) => ({
+      x: Math.max(halfW, Math.min(100 - halfW, x)),
+      y: Math.max(halfH, Math.min(100 - halfH, y)),
+    }),
+    [],
+  )
+
+  // 俳句が初めて表示されたとき、テキストサイズを計測して初期位置をクランプする
+  useEffect(() => {
+    if (!haiku) return
+    // 1フレーム待ってから計測（レンダリング完了後）
+    const id = requestAnimationFrame(() => {
+      const { halfW, halfH } = measureHalf()
+      if (halfW === 0 && halfH === 0) return
+      setTextPos((prev) => clampPos(prev.x, prev.y, halfW, halfH))
+    })
+    return () => cancelAnimationFrame(id)
+  }, [haiku, measureHalf, clampPos])
+
   // --- Draggable text (pointer events) ---
   const handlePointerDown = (e: React.PointerEvent) => {
     if (!haiku || !cardRef.current) return
     e.preventDefault()
     ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+    // PointerDown 時に1度だけ計測して dragStartRef に保存する
+    // (Move 中に textElRef が null になっても安全)
+    const { halfW, halfH } = measureHalf()
     dragStartRef.current = {
       x: e.clientX,
       y: e.clientY,
       posX: textPos.x,
       posY: textPos.y,
+      halfW,
+      halfH,
     }
     setIsDragging(true)
   }
@@ -148,14 +185,8 @@ export function ComposeScreen({ onBack }: ComposeScreenProps) {
     const rect = cardRef.current.getBoundingClientRect()
     const dx = ((e.clientX - dragStartRef.current.x) / rect.width) * 100
     const dy = ((e.clientY - dragStartRef.current.y) / rect.height) * 100
-    // テキスト要素の実サイズをパーセントに換算してクランプ（テキストが枠外にはみ出さないよう）
-    const textW = textElRef.current ? (textElRef.current.offsetWidth / rect.width) * 100 : 0
-    const textH = textElRef.current ? (textElRef.current.offsetHeight / rect.height) * 100 : 0
-    const halfW = textW / 2
-    const halfH = textH / 2
-    const newX = Math.max(halfW, Math.min(100 - halfW, dragStartRef.current.posX + dx))
-    const newY = Math.max(halfH, Math.min(100 - halfH, dragStartRef.current.posY + dy))
-    setTextPos({ x: newX, y: newY })
+    const { posX, posY, halfW, halfH } = dragStartRef.current
+    setTextPos(clampPos(posX + dx, posY + dy, halfW, halfH))
   }
 
   const handlePointerUp = () => {
