@@ -144,14 +144,14 @@
   font-family: var(--font-zen-maru), "Hiragino Kaku Gothic ProN", sans-serif;
 }
 
-/* Yusei Magic: 右上がり手書き風フォント (俳句テキスト用) */
+/* 夕すがら手書きフォント (俳句テキスト用) */
 .font-yusei {
-  font-family: var(--font-yusei), "Yusei Magic", cursive;
+  font-family: var(--font-yusei), cursive;
 }
 
-/* Legacy haiku font class → Yusei Magic に変更 */
+/* Legacy haiku font class */
 .font-haiku {
-  font-family: var(--font-yusei), "Yusei Magic", cursive;
+  font-family: var(--font-yusei), cursive;
   letter-spacing: 0.15em;
 }
 
