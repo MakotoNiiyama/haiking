@@ -8,7 +8,8 @@ const nextConfig: NextConfig = {
     S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY ?? '',
     S3_REGION: process.env.S3_REGION ?? 'ap-northeast-1',
     S3_BUCKET_NAME: process.env.S3_BUCKET_NAME ?? '',
-    BEDROCK_MODEL_ID: process.env.BEDROCK_MODEL_ID ?? '',
+    // BEDROCK_MODEL_ID は未設定時にデフォルト値を使うため空文字を注入しない
+    ...(process.env.BEDROCK_MODEL_ID ? { BEDROCK_MODEL_ID: process.env.BEDROCK_MODEL_ID } : {}),
   },
   images: {
     remotePatterns: [

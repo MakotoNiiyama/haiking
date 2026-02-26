@@ -14,5 +14,6 @@ export function createBedrockClient(): BedrockRuntimeClient {
 }
 
 // Claude Haiku 4.5 — 新世代モデルはInference Profile経由が必須
+// ?? でなく || を使う（next.config.tsが空文字を注入する場合に対応）
 export const BEDROCK_MODEL_ID =
-  process.env.BEDROCK_MODEL_ID ?? 'jp.anthropic.claude-haiku-4-5-20251001-v1:0'
+  process.env.BEDROCK_MODEL_ID || 'jp.anthropic.claude-haiku-4-5-20251001-v1:0'

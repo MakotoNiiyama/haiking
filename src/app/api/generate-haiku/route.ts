@@ -152,17 +152,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(result)
   } catch (error) {
     console.error('Haiku generation error:', error)
-    const message = error instanceof Error ? error.message : String(error)
-    // デバッグ用: 環境変数の存在確認 (確認後に削除)
-    const debugInfo = {
-      hasS3Key: Boolean(process.env.S3_ACCESS_KEY_ID),
-      s3KeyPrefix: (process.env.S3_ACCESS_KEY_ID ?? '').slice(0, 4),
-      hasS3Secret: Boolean(process.env.S3_SECRET_ACCESS_KEY),
-      region: process.env.S3_REGION ?? 'not set',
-      modelId: process.env.BEDROCK_MODEL_ID ?? 'not set (using default)',
-    }
     return NextResponse.json(
-      { error: '俳句の生成中にエラーが発生しました', detail: message, debug: debugInfo },
+      { error: '俳句の生成中にエラーが発生しました' },
       { status: 500 },
     )
   }
