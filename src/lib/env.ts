@@ -12,8 +12,9 @@ export const env = {
   azureOpenAiApiVersion: process.env.AZURE_OPENAI_API_VERSION ?? '2025-01-01-preview',
 
   // AWS Bedrock (本番用・AOAIが未設定の場合に使用)
+  // 新世代モデルはon-demandではなくInference Profile経由が必須
   bedrockModelId:
-    process.env.BEDROCK_MODEL_ID ?? 'anthropic.claude-haiku-4-5-20251001-v1:0',
+    process.env.BEDROCK_MODEL_ID ?? 'jp.anthropic.claude-haiku-4-5-20251001-v1:0',
 
   // AWS S3
   awsAccessKeyId: process.env.S3_ACCESS_KEY_ID ?? '',
