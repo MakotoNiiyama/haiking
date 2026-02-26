@@ -1,6 +1,8 @@
 'use client'
 
+import { useEffect, useState, useCallback } from 'react'
 import { motion } from 'motion/react'
+import { Loader2, RefreshCw } from 'lucide-react'
 import { HaikuCard } from './haiku-card'
 import type { Post } from '@/types'
 
@@ -74,51 +76,98 @@ const MOCK_POSTS: Post[] = process.env.NODE_ENV === 'production' ? [] : [
 ]
 
 interface FeedScreenProps {
-  posts: Post[]
+  featuredPost?: Post | null
 }
 
-export function FeedScreen({ posts }: FeedScreenProps) {
-  const allPosts = [...posts, ...MOCK_POSTS]
+export function FeedScreen({ featuredPost }: FeedScreenProps) {
+  const [remotePosts, setRemotePosts] = useState<Post[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const fetchPosts = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/posts')
+      if (res.ok) {
+        const { posts } = await res.json()
+        setRemotePosts(posts ?? [])
+      }
+    } catch {
+      // ネットワークエラー → 空配列のまま
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchPosts()
+  }, [fetchPosts])
+
+  // featuredPost を先頭に、重複を除いたリストを構築
+  const deduplicated = remotePosts.filter((p) => p.id !== featuredPost?.id)
+  const displayPosts = featuredPost ? [featuredPost, ...deduplicated] : deduplicated
+
+  // ローカル開発用フォールバック
+  const fallback = displayPosts.length === 0 ? MOCK_POSTS : displayPosts
 
   return (
     <div className="flex flex-col h-full bg-[#fafafa]">
       {/* Header */}
-      <div className="px-5 pt-5 pb-3 shrink-0">
-        <h1
-          className="text-2xl text-gray-900 leading-none"
-          style={{ fontFamily: "'Klee One', cursive" }}
+      <div className="px-5 pt-5 pb-3 shrink-0 flex items-start justify-between">
+        <div>
+          <h1
+            className="text-2xl text-gray-900 leading-none"
+            style={{ fontFamily: "'Klee One', cursive" }}
+          >
+            詠みびとしらず
+          </h1>
+          <p
+            className="text-gray-400 mt-1"
+            style={{ fontFamily: "'Zen Maru Gothic', sans-serif", fontSize: '0.65rem' }}
+          >
+            あなたの写真とAIのことばで、今日を切り取る。
+          </p>
+        </div>
+        {/* 更新ボタン */}
+        <button
+          onClick={fetchPosts}
+          disabled={loading}
+          className="p-1 mt-1 text-gray-400 hover:text-gray-600 disabled:opacity-40 transition-colors"
+          aria-label="フィードを更新"
         >
-          詠みびとしらず
-        </h1>
-        <p
-          className="text-gray-400 mt-1"
-          style={{ fontFamily: "'Zen Maru Gothic', sans-serif", fontSize: '0.65rem' }}
-        >
-          あなたの写真とAIのことばで、今日を切り取る。
-        </p>
+          {loading ? (
+            <Loader2 size={18} className="animate-spin" />
+          ) : (
+            <RefreshCw size={18} />
+          )}
+        </button>
       </div>
 
       {/* Feed */}
       <div className="flex-1 overflow-y-auto px-4 pb-28 space-y-5">
-        {allPosts.map((post, i) => (
-          <motion.div
-            key={post.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.06, duration: 0.4 }}
-          >
-            <HaikuCard
-              imageUrl={post.imageUrl}
-              haiku={post.haiku}
-              textPos={post.textPos}
-              textGray={post.textGray}
-              aspectRatio={post.aspectRatio}
-              likes={post.likes}
-              timestamp={post.timestamp}
-            />
-          </motion.div>
-        ))}
+        {loading && fallback.length === 0 ? (
+          <div className="flex justify-center items-center pt-20">
+            <Loader2 size={28} className="animate-spin text-gray-300" />
+          </div>
+        ) : (
+          fallback.map((post, i) => (
+            <motion.div
+              key={post.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.06, duration: 0.4 }}
+            >
+              <HaikuCard
+                imageUrl={post.imageUrl}
+                haiku={post.haiku}
+                textPos={post.textPos}
+                textGray={post.textGray}
+                aspectRatio={post.aspectRatio}
+                likes={post.likes}
+                timestamp={post.timestamp}
+              />
+            </motion.div>
+          ))
+        )}
       </div>
     </div>
-  )
-}
+  )}

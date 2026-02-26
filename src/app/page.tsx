@@ -5,17 +5,16 @@ import { Plus, Home } from 'lucide-react'
 import { motion, AnimatePresence } from 'motion/react'
 import { FeedScreen } from '@/app/components/FeedScreen'
 import { ComposeScreen } from '@/app/components/ComposeScreen'
-import { useLocalStorage } from '@/lib/useLocalStorage'
 import type { Post } from '@/types'
 
 type Tab = 'home' | 'compose'
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('home')
-  const [posts, setPosts] = useLocalStorage<Post[]>('yomibito-posts', [])
+  const [featuredPost, setFeaturedPost] = useState<Post | null>(null)
 
   const handlePost = (post: Post) => {
-    setPosts((prev) => [post, ...prev])
+    setFeaturedPost(post)
     setActiveTab('home')
   }
 
@@ -36,7 +35,7 @@ export default function App() {
           transition={{ duration: 0.18 }}
           className="h-full"
         >
-          {activeTab === 'home' && <FeedScreen posts={posts} />}
+          {activeTab === 'home' && <FeedScreen featuredPost={featuredPost} />}
           {activeTab === 'compose' && (
             <ComposeScreen
               onBack={() => setActiveTab('home')}

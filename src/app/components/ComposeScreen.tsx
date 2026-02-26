@@ -332,16 +332,21 @@ export function ComposeScreen({ onBack, onPost }: ComposeScreenProps) {
     try {
       // DataURL の場合は S3 へアップロード（設定されていなければ DataURL をそのまま使用）
       let imageUrl = uploadedImage
+      let postId = Date.now().toString()
       if (uploadedImage.startsWith('data:')) {
         try {
           const res = await fetch('/api/upload-image', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ dataUrl: uploadedImage }),
+            body: JSON.stringify({
+              dataUrl: uploadedImage,
+              meta: { haiku, poemMode, textPos, textGray, aspectRatio: imageAspectRatio },
+            }),
           })
           if (res.ok) {
-            const { url } = await res.json()
-            imageUrl = url
+            const data = await res.json()
+            imageUrl = data.url
+            if (data.id) postId = data.id
           }
           // S3 未設定 (503) や失敗時は DataURL にフォールバック
         } catch {
@@ -349,7 +354,7 @@ export function ComposeScreen({ onBack, onPost }: ComposeScreenProps) {
         }
       }
       onPost({
-        id: Date.now().toString(),
+        id: postId,
         imageUrl,
         haiku,
         poemMode,
