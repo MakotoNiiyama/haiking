@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import localFont from 'next/font/local'
 import { Noto_Serif_JP, Klee_One, Zen_Maru_Gothic } from 'next/font/google'
 import { Toaster } from '@/app/components/ui/sonner'
+import { ErrorBoundary } from '@/components/error-boundary'
 import './globals.css'
 
 const kleeOne = Klee_One({
@@ -48,7 +49,9 @@ export default function RootLayout({
       <body
         className={`${kleeOne.variable} ${zenMaruGothic.variable} ${notoSerifJP.variable} ${yosugaraFont.variable} antialiased`}
       >
-        {children}
+        <ErrorBoundary>
+          {children}
+        </ErrorBoundary>
         <Toaster richColors position="top-center" />
       </body>
     </html>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { ArrowLeft, Upload, Sparkles, Send, RotateCcw, Scissors, Check, X } from 'lucide-react'
+import { ArrowLeft, Upload, Sparkles, Send, RotateCcw, Scissors, Check, X, Loader2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'motion/react'
 import { toast } from 'sonner'
 import { findBestTextPlacement, applyFilmTone } from '@/lib/imageAnalysis'
@@ -324,21 +324,46 @@ export function ComposeScreen({ onBack, onPost }: ComposeScreenProps) {
 
   const handleCropPointerUp = useCallback(() => { cropDragRef.current = null }, [])
 
-  const handlePost = () => {
-    if (!haiku || !uploadedImage) return
-    onPost({
-      id: Date.now().toString(),
-      imageUrl: uploadedImage,
-      haiku,
-      poemMode,
-      textPos,
-      textGray,
-      aspectRatio: imageAspectRatio,
-      likes: 0,
-      timestamp: 'たった今',
-      createdAt: Date.now(),
-    })
-    onBack()
+  const [isPosting, setIsPosting] = useState(false)
+
+  const handlePost = async () => {
+    if (!haiku || !uploadedImage || isPosting) return
+    setIsPosting(true)
+    try {
+      // DataURL の場合は S3 へアップロード（設定されていなければ DataURL をそのまま使用）
+      let imageUrl = uploadedImage
+      if (uploadedImage.startsWith('data:')) {
+        try {
+          const res = await fetch('/api/upload-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ dataUrl: uploadedImage }),
+          })
+          if (res.ok) {
+            const { url } = await res.json()
+            imageUrl = url
+          }
+          // S3 未設定 (503) や失敗時は DataURL にフォールバック
+        } catch {
+          // ネットワークエラー等 → DataURL フォールバック
+        }
+      }
+      onPost({
+        id: Date.now().toString(),
+        imageUrl,
+        haiku,
+        poemMode,
+        textPos,
+        textGray,
+        aspectRatio: imageAspectRatio,
+        likes: 0,
+        timestamp: 'たった今',
+        createdAt: Date.now(),
+      })
+      onBack()
+    } finally {
+      setIsPosting(false)
+    }
   }
 
   const hasContent = !!haiku && haiku.length > 0
@@ -357,16 +382,16 @@ export function ComposeScreen({ onBack, onPost }: ComposeScreenProps) {
           つくる
         </span>
         <button
-          disabled={!hasContent}
+          disabled={!hasContent || isPosting}
           onClick={handlePost}
           className={`px-4 py-1.5 rounded-full transition-all ${
-            hasContent ? 'bg-gray-900 text-white' : 'bg-gray-200 text-gray-400'
+            hasContent && !isPosting ? 'bg-gray-900 text-white' : 'bg-gray-200 text-gray-400'
           }`}
           style={{ fontFamily: "'Zen Maru Gothic', sans-serif", fontSize: '0.8rem' }}
         >
           <div className="flex items-center gap-1.5">
-            <Send size={14} />
-            投稿
+            {isPosting ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+            {isPosting ? '投稿中…' : '投稿'}
           </div>
         </button>
       </div>

@@ -1,10 +1,11 @@
 import { AzureOpenAI } from 'openai'
+import { env } from '@/lib/env'
 
 export const openai = new AzureOpenAI({
-  apiKey: process.env.AZURE_OPENAI_API_KEY,
-  endpoint: process.env.AZURE_OPENAI_ENDPOINT,
-  apiVersion: process.env.AZURE_OPENAI_API_VERSION ?? '2025-01-01-preview',
+  apiKey: env.azureOpenAiApiKey,
+  endpoint: env.azureOpenAiEndpoint,
+  apiVersion: env.azureOpenAiApiVersion,
 })
 
 // デプロイメント名 = モデル名として使用
-export const MODEL = process.env.AZURE_OPENAI_DEPLOYMENT ?? 'gpt-5'
+export const MODEL = env.azureOpenAiDeployment

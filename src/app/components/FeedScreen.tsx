@@ -4,8 +4,8 @@ import { motion } from 'motion/react'
 import { HaikuCard } from './haiku-card'
 import type { Post } from '@/types'
 
-// モックデータ（匿名・最古順想定）
-const MOCK_POSTS: Post[] = [
+// モックデータは開発環境のみ表示（本番デプロイ時は空配列）
+const MOCK_POSTS: Post[] = process.env.NODE_ENV === 'production' ? [] : [
   {
     id: 'mock-1',
     imageUrl:
