@@ -4,7 +4,14 @@
  */
 
 export const env = {
-  // AWS Bedrock
+  // Azure OpenAI (ローカル開発用・任意)
+  // 設定されている場合はBedrockより優先して使用される
+  azureOpenAiApiKey: process.env.AZURE_OPENAI_API_KEY ?? '',
+  azureOpenAiEndpoint: process.env.AZURE_OPENAI_ENDPOINT ?? '',
+  azureOpenAiDeployment: process.env.AZURE_OPENAI_DEPLOYMENT ?? '',
+  azureOpenAiApiVersion: process.env.AZURE_OPENAI_API_VERSION ?? '2025-01-01-preview',
+
+  // AWS Bedrock (本番用・AOAIが未設定の場合に使用)
   bedrockModelId:
     process.env.BEDROCK_MODEL_ID ?? 'anthropic.claude-haiku-4-5-20251001-v1:0',
 

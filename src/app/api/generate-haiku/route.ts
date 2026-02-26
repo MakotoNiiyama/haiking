@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime'
+import { AzureOpenAI } from 'openai'
 import { bedrockClient, BEDROCK_MODEL_ID } from '@/lib/bedrock'
+import { env } from '@/lib/env'
+
+/** AZURE_OPENAI_API_KEY が設定されていればAOAI優先、なければBedrock */
+const useAoai = Boolean(env.azureOpenAiApiKey && env.azureOpenAiEndpoint && env.azureOpenAiDeployment)
+
+const aoaiClient = useAoai
+  ? new AzureOpenAI({
+      apiKey: env.azureOpenAiApiKey,
+      endpoint: env.azureOpenAiEndpoint,
+      apiVersion: env.azureOpenAiApiVersion,
+    })
+  : null
 
 const HAIKU_SYSTEM_PROMPT = `あなたは江戸時代から続く俳人の系譜を受け継ぐ、現代の俳人です。
 送られてくる画像を深く観察し、その情景に合った俳句を一句詠んでください。
@@ -50,6 +63,67 @@ function parseDataUrl(dataUrl: string): { mediaType: string; data: string } {
   return { mediaType: match[1], data: match[2] }
 }
 
+/** JSONを文字列から安全に取り出す */
+function extractJson(text: string): string {
+  const m = text.match(/\{[\s\S]*\}/)
+  if (!m) throw new Error('JSON not found in response')
+  return m[0]
+}
+
+async function generateWithAoai(
+  imageBase64: string,
+  systemPrompt: string,
+  userText: string,
+): Promise<string> {
+  const response = await aoaiClient!.chat.completions.create({
+    model: env.azureOpenAiDeployment,
+    max_completion_tokens: 512,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      {
+        role: 'user',
+        content: [
+          { type: 'image_url', image_url: { url: imageBase64, detail: 'high' } },
+          { type: 'text', text: userText },
+        ],
+      },
+    ],
+    response_format: { type: 'json_object' },
+  })
+  return response.choices[0].message.content ?? ''
+}
+
+async function generateWithBedrock(
+  imageBase64: string,
+  systemPrompt: string,
+  userText: string,
+): Promise<string> {
+  const { mediaType, data } = parseDataUrl(imageBase64)
+  const payload = {
+    anthropic_version: 'bedrock-2023-05-31',
+    max_tokens: 512,
+    system: systemPrompt,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: mediaType, data } },
+          { type: 'text', text: userText },
+        ],
+      },
+    ],
+  }
+  const command = new InvokeModelCommand({
+    modelId: BEDROCK_MODEL_ID,
+    contentType: 'application/json',
+    accept: 'application/json',
+    body: JSON.stringify(payload),
+  })
+  const res = await bedrockClient.send(command)
+  const body = JSON.parse(new TextDecoder().decode(res.body))
+  return body.content?.[0]?.text ?? ''
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { imageBase64, mode = 'haiku' } = await req.json()
@@ -64,52 +138,17 @@ export async function POST(req: NextRequest) {
         ? 'この画像の情景に合った川柳を一句詠んでください。'
         : 'この画像の情景に合った俳句を一句詠んでください。'
 
-    const { mediaType, data } = parseDataUrl(imageBase64)
+    console.log(`[generate-haiku] backend=${useAoai ? 'AOAI' : 'Bedrock'} mode=${mode}`)
 
-    const payload = {
-      anthropic_version: 'bedrock-2023-05-31',
-      max_tokens: 512,
-      system: systemPrompt,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'image',
-              source: {
-                type: 'base64',
-                media_type: mediaType,
-                data,
-              },
-            },
-            { type: 'text', text: userText },
-          ],
-        },
-      ],
-    }
+    const raw = useAoai
+      ? await generateWithAoai(imageBase64, systemPrompt, userText)
+      : await generateWithBedrock(imageBase64, systemPrompt, userText)
 
-    const command = new InvokeModelCommand({
-      modelId: BEDROCK_MODEL_ID,
-      contentType: 'application/json',
-      accept: 'application/json',
-      body: JSON.stringify(payload),
-    })
-
-    const response = await bedrockClient.send(command)
-    const responseBody = JSON.parse(new TextDecoder().decode(response.body))
-    const content = responseBody.content?.[0]?.text
-
-    if (!content) {
+    if (!raw) {
       return NextResponse.json({ error: '生成に失敗しました' }, { status: 500 })
     }
 
-    // モデルがコードブロック付きで返す場合に備えてJSONを抽出
-    const jsonMatch = content.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) {
-      return NextResponse.json({ error: 'JSONの解析に失敗しました' }, { status: 500 })
-    }
-
-    const result = JSON.parse(jsonMatch[0])
+    const result = JSON.parse(extractJson(raw))
     return NextResponse.json(result)
   } catch (error) {
     console.error('Haiku generation error:', error)
