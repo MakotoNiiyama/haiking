@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime'
 import { AzureOpenAI } from 'openai'
-import { bedrockClient, BEDROCK_MODEL_ID } from '@/lib/bedrock'
+import { createBedrockClient, BEDROCK_MODEL_ID } from '@/lib/bedrock'
 import { env } from '@/lib/env'
 
 /** AZURE_OPENAI_API_KEY が設定されていればAOAI優先、なければBedrock */
@@ -119,7 +119,7 @@ async function generateWithBedrock(
     accept: 'application/json',
     body: JSON.stringify(payload),
   })
-  const res = await bedrockClient.send(command)
+  const res = await createBedrockClient().send(command)
   const body = JSON.parse(new TextDecoder().decode(res.body))
   return body.content?.[0]?.text ?? ''
 }
