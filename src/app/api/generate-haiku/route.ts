@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { openai, MODEL } from '@/lib/openai'
+import { InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime'
+import { bedrockClient, BEDROCK_MODEL_ID } from '@/lib/bedrock'
 
 const HAIKU_SYSTEM_PROMPT = `あなたは江戸時代から続く俳人の系譜を受け継ぐ、現代の俳人です。
 送られてくる画像を深く観察し、その情景に合った俳句を一句詠んでください。
@@ -31,7 +32,7 @@ const SENRYU_SYSTEM_PROMPT = `あなたは日常の風景に温かい目を向�
 【ルール】
 1. 季語・切れ字は不要。kigoフィールドは空文字、seasonフィールドは「無季」にすること
 2. 17音の口語文を基本形式とする（漢字は読み仮名の文字数でカウント。長音・促音・撥音は1音、拗音は0音でカウント）
-3. リズムが心地よければ多少の字余り・字足らずも許容する
+3. リズムが心地よければ1字の字余り・字足らずも許容する
 4. 難解な語句や格調ばった表現を避け、読んだ人が「わかる〜」「くすっ」となるような等身大の一句を詠むこと
 
 【出力形式】
@@ -42,6 +43,13 @@ const SENRYU_SYSTEM_PROMPT = `あなたは日常の風景に温かい目を向�
   "season": "無季"
 }`
 
+/** data:image/jpeg;base64,XXXX → { mediaType, data } に分解 */
+function parseDataUrl(dataUrl: string): { mediaType: string; data: string } {
+  const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/)
+  if (!match) throw new Error('Invalid data URL')
+  return { mediaType: match[1], data: match[2] }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { imageBase64, mode = 'haiku' } = await req.json()
@@ -51,43 +59,57 @@ export async function POST(req: NextRequest) {
     }
 
     const systemPrompt = mode === 'senryu' ? SENRYU_SYSTEM_PROMPT : HAIKU_SYSTEM_PROMPT
+    const userText =
+      mode === 'senryu'
+        ? 'この画像の情景に合った川柳を一句詠んでください。'
+        : 'この画像の情景に合った俳句を一句詠んでください。'
 
-    const response = await openai.chat.completions.create({
-      model: MODEL,
-      max_completion_tokens: 8000,
+    const { mediaType, data } = parseDataUrl(imageBase64)
+
+    const payload = {
+      anthropic_version: 'bedrock-2023-05-31',
+      max_tokens: 512,
+      system: systemPrompt,
       messages: [
-        {
-          role: 'system',
-          content: systemPrompt,
-        },
         {
           role: 'user',
           content: [
             {
-              type: 'image_url',
-              image_url: {
-                url: imageBase64,
-                detail: 'high',
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: mediaType,
+                data,
               },
             },
-            {
-              type: 'text',
-              text: mode === 'senryu'
-                ? 'この画像の情景に合った川柳を一句詠んでください。'
-                : 'この画像の情景に合った俳句を一句詠んでください。',
-            },
+            { type: 'text', text: userText },
           ],
         },
       ],
-      response_format: { type: 'json_object' },
+    }
+
+    const command = new InvokeModelCommand({
+      modelId: BEDROCK_MODEL_ID,
+      contentType: 'application/json',
+      accept: 'application/json',
+      body: JSON.stringify(payload),
     })
 
-    const content = response.choices[0].message.content
+    const response = await bedrockClient.send(command)
+    const responseBody = JSON.parse(new TextDecoder().decode(response.body))
+    const content = responseBody.content?.[0]?.text
+
     if (!content) {
       return NextResponse.json({ error: '生成に失敗しました' }, { status: 500 })
     }
 
-    const result = JSON.parse(content)
+    // モデルがコードブロック付きで返す場合に備えてJSONを抽出
+    const jsonMatch = content.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) {
+      return NextResponse.json({ error: 'JSONの解析に失敗しました' }, { status: 500 })
+    }
+
+    const result = JSON.parse(jsonMatch[0])
     return NextResponse.json(result)
   } catch (error) {
     console.error('Haiku generation error:', error)

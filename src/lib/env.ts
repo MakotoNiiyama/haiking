@@ -1,24 +1,12 @@
 /**
- * 環境変数の一元管理・バリデーション
+ * 環境変数の一元管理
  * サーバーサイド専用。クライアントバンドルに含めないこと。
  */
 
-function requireEnv(key: string): string {
-  const value = process.env[key]
-  if (!value) {
-    throw new Error(
-      `[env] 必須環境変数 "${key}" が設定されていません。.env.example を確認してください。`,
-    )
-  }
-  return value
-}
-
 export const env = {
-  // Azure OpenAI
-  azureOpenAiApiKey: requireEnv('AZURE_OPENAI_API_KEY'),
-  azureOpenAiEndpoint: requireEnv('AZURE_OPENAI_ENDPOINT'),
-  azureOpenAiDeployment: requireEnv('AZURE_OPENAI_DEPLOYMENT'),
-  azureOpenAiApiVersion: process.env.AZURE_OPENAI_API_VERSION ?? '2025-01-01-preview',
+  // AWS Bedrock
+  bedrockModelId:
+    process.env.BEDROCK_MODEL_ID ?? 'anthropic.claude-haiku-4-5-20251001-v1:0',
 
   // AWS S3
   awsAccessKeyId: process.env.S3_ACCESS_KEY_ID ?? '',
