@@ -2,9 +2,9 @@ name: CI / CD
 
 on:
   push:
-    branches: [main, feature-figma-make]
+    branches: [main, feature-figma-make, yomibito]
   pull_request:
-    branches: [main, feature-figma-make]
+    branches: [main, feature-figma-make, yomibito]
 
 jobs:
   ci:
