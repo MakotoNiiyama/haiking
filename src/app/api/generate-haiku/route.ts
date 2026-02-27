@@ -78,6 +78,33 @@ const SENRYU_SYSTEM_PROMPT = `あなたは日常の風景に温かい目を向�
   "season": "無季"
 }`
 
+/**
+ * ThrottlingException / 429 に対して exponential backoff で最大 maxAttempts 回リトライ
+ * 500ms → 1000ms → 2000ms
+ */
+async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 3): Promise<T> {
+  let lastErr: unknown
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn()
+    } catch (err) {
+      lastErr = err
+      const isRetryable =
+        err instanceof Error &&
+        (err.name === 'ThrottlingException' ||
+          err.name === 'ServiceUnavailableException' ||
+          (err as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode === 429 ||
+          (err as { status?: number }).status === 429)
+      if (isRetryable && attempt < maxAttempts) {
+        await new Promise((r) => setTimeout(r, 2 ** (attempt - 1) * 500))
+        continue
+      }
+      throw err
+    }
+  }
+  throw lastErr
+}
+
 /** data:image/jpeg;base64,XXXX → { mediaType, data } に分解 */
 function parseDataUrl(dataUrl: string): { mediaType: string; data: string } {
   const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/)
@@ -97,7 +124,7 @@ async function generateWithAoai(
   systemPrompt: string,
   userText: string,
 ): Promise<string> {
-  const response = await aoaiClient!.chat.completions.create({
+  const response = await withRetry(() => aoaiClient!.chat.completions.create({
     model: env.azureOpenAiDeployment,
     max_completion_tokens: 512,
     messages: [
@@ -111,7 +138,7 @@ async function generateWithAoai(
       },
     ],
     response_format: { type: 'json_object' },
-  })
+  }))
   return response.choices[0].message.content ?? ''
 }
 
@@ -141,7 +168,7 @@ async function generateWithBedrock(
     accept: 'application/json',
     body: JSON.stringify(payload),
   })
-  const res = await createBedrockClient().send(command)
+  const res = await withRetry(() => createBedrockClient().send(command))
   const body = JSON.parse(new TextDecoder().decode(res.body))
   return body.content?.[0]?.text ?? ''
 }

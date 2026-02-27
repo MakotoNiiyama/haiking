@@ -18,6 +18,7 @@ export function ComposeScreen({ onBack, onPost }: ComposeScreenProps) {
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
   const [haiku, setHaiku] = useState<string[] | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [generationFailed, setGenerationFailed] = useState(false)
   const [textGray, setTextGray] = useState(255)
   const [textPos, setTextPos] = useState({ x: 65, y: 40 })
   const [isDragging, setIsDragging] = useState(false)
@@ -83,6 +84,7 @@ export function ComposeScreen({ onBack, onPost }: ComposeScreenProps) {
 
     setIsGenerating(true)
     setHaiku(null)
+    setGenerationFailed(false)
     setUploadedImage(null)
     croppedForApiRef.current = rawDataUrl
 
@@ -111,8 +113,10 @@ export function ComposeScreen({ onBack, onPost }: ComposeScreenProps) {
       if (!apiRes.ok) throw new Error(await apiRes.text())
       const data = await apiRes.json()
       setHaiku(data.lines as string[])
+      setGenerationFailed(false)
     } catch (err) {
       console.error(err)
+      setGenerationFailed(true)
       toast.error('俳句の生成に失敗しました。もう一度お試しください。')
     } finally {
       setIsGenerating(false)
@@ -134,7 +138,7 @@ export function ComposeScreen({ onBack, onPost }: ComposeScreenProps) {
     const src = croppedForApiRef.current
     if (!src) return
     setIsGenerating(true)
-    setHaiku(null)
+    // haiku はクリアしない（失敗時にボタンが消えないよう古い句を保持）
     try {
       const res = await fetch('/api/generate-haiku', {
         method: 'POST',
@@ -144,9 +148,11 @@ export function ComposeScreen({ onBack, onPost }: ComposeScreenProps) {
       if (!res.ok) throw new Error(await res.text())
       const data = await res.json()
       setHaiku(data.lines as string[])
+      setGenerationFailed(false)
     } catch (err) {
       console.error(err)
-      toast.error('俳句の再生成に失敗しました。')
+      setGenerationFailed(true)
+      toast.error('再生成に失敗しました。もう一度お試しください。')
     } finally {
       setIsGenerating(false)
     }
@@ -685,7 +691,7 @@ export function ComposeScreen({ onBack, onPost }: ComposeScreenProps) {
             ) : (
               <>
                 {/* Regenerate */}
-                {haiku && !isGenerating && (
+                {(haiku || generationFailed) && !isGenerating && (
                   <button
                     onClick={regenerateHaiku}
                     className="flex items-center gap-2 mx-auto mb-3 px-5 py-2 bg-white border border-gray-200 rounded-full shadow-sm hover:shadow-md active:scale-95 transition-all"
